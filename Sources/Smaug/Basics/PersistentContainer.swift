@@ -63,7 +63,7 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
     }
 
     public func save() {
-        let fileQueue = DispatchQueue(label: "de.kuehnerleben.Hippocampus.file", qos: .background)
+        let fileQueue = DispatchQueue(label: "de.kuehnerleben.smaug.file", qos: .background)
         guard !url.isVirtual, hasChanges else { return }
         fileQueue.async { [self] in
             #if TRACKPERSISTENCE
