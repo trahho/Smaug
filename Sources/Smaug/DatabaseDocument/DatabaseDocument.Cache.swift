@@ -68,14 +68,10 @@ public extension DatabaseDocument {
             set { fatalError() }
         }
 
-//        public static subscript<Enclosing: DatabaseDocument>(_enclosingInstance instance: Enclosing,
-//                                                             wrapped _: ReferenceWritableKeyPath<Enclosing, T>,
-//                                                             storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Cache>) -> T
-//        {
-//            get {
-//                fatal
-//            }
-//            set {}
-//        }
+        public var projectedValue: [String] {
+            guard let contents = try? FileManager.default.contentsOfDirectory(atPath: url.path) else { return [] }
+            return contents.map { URL(filePath: $0).lastPathComponent }
+        }
+
     }
 }
