@@ -37,6 +37,18 @@ public extension DatabaseDocument {
                 cancellable = container.objectWillChange.sink { document.objectWillChange.send() }
             }
         }
+        
+        override func start() {
+            container.start()
+        }
+
+        override func load() {
+            container.load()
+        }
+
+        override func save() {
+            container.save()
+        }
 
         // MARK: - Wrapping
 
