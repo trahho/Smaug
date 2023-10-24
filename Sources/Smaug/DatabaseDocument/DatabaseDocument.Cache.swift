@@ -50,6 +50,7 @@ public extension DatabaseDocument {
             if let document = cache[name]?.document {
                 return document
             } else {
+                let url = url.appending(component: name)
                 let document = T(url: url, containerDocument: parent)
                 var cancellable: AnyCancellable?
                 if publishChange {
@@ -72,6 +73,5 @@ public extension DatabaseDocument {
             guard let contents = try? FileManager.default.contentsOfDirectory(atPath: url.path) else { return [] }
             return contents.map { URL(filePath: $0).lastPathComponent }
         }
-
     }
 }
