@@ -1,52 +1,13 @@
 //
-//  Database.Property.swift
-//  Hippocampus
+//  File.swift
 //
-//  Created by Guido Kühn on 29.04.23.
+//
+//  Created by Guido Kühn on 24.12.23.
 //
 
 import Foundation
 
-public extension ObjectStore.Object {
-//    @propertyWrapper final class Property<Value> where Value: DataStore.PersistentValue {
-//        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-//        public var wrappedValue: Value {
-//            get { fatalError() }
-//            set { fatalError() }
-//        }
-//
-//        private var defaultValue: (() -> Value)?
-//        private var value: Value?
-//
-//        public init(wrappedValue: @autoclosure @escaping () -> Value) {
-//            defaultValue = wrappedValue
-//        }
-//
-//        public init() {}
-//
-//        public static subscript<Enclosing: ObjectStore.Object>(_enclosingInstance instance: Enclosing,
-//                                                               wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
-//                                                               storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value
-//        {
-//            get {
-//                let storage = instance[keyPath: storageKeyPath]
-//                if let value = storage.value {
-//                    return value
-//                } else {
-//                    return storage.defaultValue!()
-//                }
-//            }
-//            set {
-//                guard !instance.readOnly else { return }
-//                let storage = instance[keyPath: storageKeyPath]
-//                storage.value = newValue
-//            }
-//        }
-//    }
-    // }
-//
-    // public extension ContentStore {
-
+public extension ContentStore {
     @propertyWrapper final class Property<Value> where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
@@ -81,7 +42,7 @@ public extension ObjectStore.Object {
 
         public init() {}
 
-        public static subscript<Enclosing: ObjectStore.Object>(_enclosingInstance instance: Enclosing,
+        public static subscript<Enclosing: ContentStore>(_enclosingInstance instance: Enclosing,
                                                          wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
                                                          storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value
         {
@@ -93,13 +54,13 @@ public extension ObjectStore.Object {
                 let storage = instance[keyPath: storageKeyPath]
                 instance.objectWillChange.send()
                 storage._value = newValue
-                instance.store?.objectDidChange.send()
+                instance.objectDidChange.send()
             }
         }
     }
 }
 
-extension ObjectStore.Object.Property: EncodableProperty {
+extension ContentStore.Property: EncodableProperty {
     public func encodeValue(from container: inout EncodeContainer, propertyName: String) throws {
         guard let _value else { return }
         let codingKey = SerializedCodingKeys(key: key ?? propertyName)
@@ -107,7 +68,7 @@ extension ObjectStore.Object.Property: EncodableProperty {
     }
 }
 
-extension ObjectStore.Object.Property: DecodableProperty {
+extension ContentStore.Property: DecodableProperty {
     public func decodeValue(from container: DecodeContainer, propertyName: String) throws {
         let codingKey = SerializedCodingKeys(key: key ?? propertyName)
         if let value = try? container.decodeIfPresent(Value.self, forKey: codingKey) {

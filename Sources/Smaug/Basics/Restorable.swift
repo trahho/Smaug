@@ -10,7 +10,3 @@ import Foundation
 public protocol Restorable {
     func restore()
 }
-
-public protocol ContentContainer {
-    
-}
