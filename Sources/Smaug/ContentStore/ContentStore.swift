@@ -32,7 +32,6 @@ open class ContentStore: Persistent, Serializable, ContentContainer, ObservableO
         objectDidChange.send()
     }
 
-
     // MARK: - Access
 
     public subscript<T>(_ type: T.Type, _ id: T.ID) -> T? where T: ObjectStore.Object {
@@ -47,7 +46,7 @@ open class ContentStore: Persistent, Serializable, ContentContainer, ObservableO
         document.add(item)
     }
 
-    public func create<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
+    public func create<T>(_: T.Type) -> T where T: ObjectStore.Object {
         let object = T()
         add(object)
         return object
@@ -55,5 +54,36 @@ open class ContentStore: Persistent, Serializable, ContentContainer, ObservableO
 
     public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
         document[type, name]
+    }
+}
+
+extension DatabaseDocument {
+    @propertyWrapper
+    final class Projected<Value> {
+        var keyPath: ReferenceWritableKeyPath<ContentStore, Value>
+
+        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
+        public var wrappedValue: Value {
+            get { fatalError() }
+            set { fatalError() }
+        }
+
+        init(_ keyPath: ReferenceWritableKeyPath<ContentStore, Value>) {
+            self.keyPath = keyPath
+        }
+
+        public static subscript<Enclosing: ContentStore>(_enclosingInstance instance: Enclosing,
+                                                         wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
+                                                         storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Projected>) -> Value
+        {
+            get {
+                let storage = instance[keyPath: storageKeyPath]
+                return instance[keyPath: storage.keyPath]
+            }
+            set {
+                let storage = instance[keyPath: storageKeyPath]
+                instance[keyPath: storage.keyPath] = newValue
+            }
+        }
     }
 }

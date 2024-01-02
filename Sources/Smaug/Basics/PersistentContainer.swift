@@ -29,9 +29,19 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
         get { _content! }
         set {
             objectWillChange.send()
+            let hasChange = _content != nil
             _content = newValue
-            if _content != nil, let contentChange { contentChange() }
+            if _content != nil, let contentChange {
+                contentChange()
+            }
             registerChanges()
+            if hasChange, commitOnChange {
+                hasChanges = true
+                save()
+                hasChanges = false
+            } else {
+                hasChanges = true
+            }
         }
     }
 

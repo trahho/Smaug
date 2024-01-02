@@ -13,8 +13,9 @@ extension DatabaseDocument {
     }
 }
 
+@dynamicMemberLookup
 open class DatabaseDocument: Reflectable, ObservableObject {
-    private(set) var containerDocument: DatabaseDocument?
+    public private(set) var containerDocument: DatabaseDocument?
     
     // MARK: - Initialization
     
@@ -168,7 +169,7 @@ open class DatabaseDocument: Reflectable, ObservableObject {
         }
     }
     
-  @discardableResult  public func create<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
+    @discardableResult public func create<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
         let object = T()
         add(object)
         return object
@@ -184,5 +185,14 @@ open class DatabaseDocument: Reflectable, ObservableObject {
   
     public func callAsFunction<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
         create(type)
+    }
+    
+//    subscript<T>(dynamicMember dynamicMember: String) ->  T where T: PropertyStorage {
+//        guard let storage = self[KeyPath]
+//    }
+//
+    public subscript<T>(dynamicMember keyPath: ReferenceWritableKeyPath<DatabaseDocument, T>) -> T where T: ContentStore {
+        get { self[keyPath: keyPath] }
+        set { self[keyPath: keyPath] = newValue }
     }
 }

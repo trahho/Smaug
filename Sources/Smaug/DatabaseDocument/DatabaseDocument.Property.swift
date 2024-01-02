@@ -12,10 +12,10 @@ public extension DatabaseDocument {
     class PropertyStorage: Storage {}
 
     @propertyWrapper
-    final class DocumentProperty<T>: PropertyStorage where T: Persistent {
+    final class Property<T>: PropertyStorage where T: ContentStore {
         // MARK: - Initialization
 
-        public init(wrappedValue: @autoclosure @escaping () -> T, publishChange: Bool = false, commitOnChange: Bool = false) {
+        public init(wrappedValue: @autoclosure @escaping () -> T, publishChange: Bool = true, commitOnChange: Bool = true) {
             content = wrappedValue
             self.commitOnChange = commitOnChange
             self.publishChange = publishChange
@@ -32,6 +32,7 @@ public extension DatabaseDocument {
         override func setup(url: URL, name: String, document: DatabaseDocument) {
             let content = content()
             self.document = document
+            content.document = document
             let url = url.appending(component: name + ".properties")
             container = PersistentContainer(url: url, content: content, commitOnChange: commitOnChange)
             if publishChange {
@@ -62,7 +63,7 @@ public extension DatabaseDocument {
 
         public static subscript<Enclosing: DatabaseDocument>(_enclosingInstance instance: Enclosing,
                                                              wrapped _: ReferenceWritableKeyPath<Enclosing, T>,
-                                                             storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, DocumentProperty>) -> T
+                                                             storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> T
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
