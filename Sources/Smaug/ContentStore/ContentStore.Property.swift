@@ -52,6 +52,7 @@ public extension ContentStore {
             }
             set {
                 let storage = instance[keyPath: storageKeyPath]
+                print ("Contentstore.Property will change")
                 instance.objectWillChange.send()
                 storage._value = newValue
                 instance.objectDidChange.send()

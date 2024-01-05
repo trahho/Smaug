@@ -11,9 +11,12 @@ import Foundation
 public class PersistentContainer<Content: Persistent>: ObservableObject {
     typealias ContentDelegate = () -> Void
 
+    private let timestampStringLenght = 30
+
     let url: URL
     private var isMerging = false
-    private var currentTimestamp: Date = .distantPast
+    private var currentFileTimestamp: Date = .distantPast
+    private var currentDataTimestamp: Double = 0
     private let metadataQuery = NSMetadataQuery()
     private var querySubscriber: AnyCancellable?
     private var didChangeSubcriber: AnyCancellable?
@@ -25,16 +28,21 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
     private(set) var hasChanges = false
 
     private var _content: Content?
+    
+    fileprivate func setContent(_ newValue: Content) {
+        objectWillChange.send()
+        _content = newValue
+        if _content != nil, let contentChange {
+            contentChange()
+        }
+        registerChanges()
+    }
+    
     var content: Content {
         get { _content! }
         set {
-            objectWillChange.send()
             let hasChange = _content != nil
-            _content = newValue
-            if _content != nil, let contentChange {
-                contentChange()
-            }
-            registerChanges()
+            setContent(newValue)
             if hasChange, commitOnChange {
                 hasChanges = true
                 save()
@@ -71,44 +79,56 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
             willChangeSubscriber = nil
         }
     }
+    
+    func stamped(content: Content) -> Data? {
+        guard let data = content.encode() else { return nil }
+        currentDataTimestamp = Date().timeIntervalSince1970
+        let string = String(currentDataTimestamp)
+        let stampString = string + String(repeating: "0", count: timestampStringLenght - string.count)
+        var stampedData = stampString.data(using: .ascii)
+        stampedData?.append(data)
+        return stampedData
+    }
+
 
     public func save() {
         let fileQueue = DispatchQueue(label: "de.kuehnerleben.smaug.file", qos: .background)
         guard !url.isVirtual, hasChanges else { return }
         fileQueue.async { [self] in
-            #if TRACKPERSISTENCE
-                print("PersistentDataContainer<\(String(reflecting: Content.self))>: Save")
-            #endif
+//            #if TRACKPERSISTENCE
+            print("PersistentDataContainer<\(String(reflecting: Content.self))>: Save")
+//            #endif
 
             willCommit?()
-            guard let data = content.encode() else { return }
+            guard let data = stamped(content: content) else { return }
+
             metadataQuery.stop()
             url.deletingLastPathComponent().ensureDirectory()
 
-            #if TRACKPERSISTENCE
-                measureDuration("Write data") {
-                    try! data.write(to: url, options: [.atomic])
-                }
-            #else
-                try! data.write(to: url, options: [.atomic])
-            #endif
+//            #if TRACKPERSISTENCE
+//                measureDuration("Write data") {
+//                    try! data.write(to: url, options: [.atomic])
+//                }
+//            #else
+            try! data.write(to: url, options: [.atomic])
+//            #endif
 
-            currentTimestamp = try! FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as! Date
+            currentFileTimestamp = try! FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as! Date
 
-            #if TRACKPERSISTENCE
-                print("Modified \(currentTimestamp)")
-            #endif
+//            #if TRACKPERSISTENCE
+            print("Modified \(currentFileTimestamp)")
+//            #endif
 
             hasChanges = false
             DispatchQueue.main.sync {
-                #if TRACKPERSISTENCE
-                    print("Reactivating query")
-                #endif
+//                #if TRACKPERSISTENCE
+                print("Reactivating query")
+//                #endif
                 metadataQuery.start()
             }
-            #if TRACKPERSISTENCE
-                print("Done")
-            #endif
+//            #if TRACKPERSISTENCE
+            print("Done")
+//            #endif
         }
     }
 
@@ -120,7 +140,8 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
                 isMerging = false
             } catch {}
         }
-        content = newContent
+            setContent(newContent)
+        
     }
 
     func restore(content: Content) {
@@ -129,33 +150,52 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
         }
     }
 
+  
+    func unstamped(data: Data?) -> Content? {
+        guard var data else { return nil }
+        let stampData = data.subdata(in: 0 ..< timestampStringLenght)
+        guard
+            let stampString = String(data: stampData, encoding: .ascii),
+            let dataTimestamp = Double(stampString),
+            dataTimestamp > currentDataTimestamp
+        else {
+            return nil
+        }
+        data.removeSubrange(0 ..< timestampStringLenght)
+        guard let content = Content.decode(persistentData: data) else { return nil }
+        
+        currentDataTimestamp = dataTimestamp
+        return content
+    }
+
     public func load() {
         guard !url.isVirtual else { return }
         guard
             let modificationDate = try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false))[.modificationDate] as? Date,
-            modificationDate > currentTimestamp
+            modificationDate > currentFileTimestamp
         else {
             if url.isiCloud { url.deletingLastPathComponent().startDownloading() }
             return
         }
         guard
-            let data = try? Data(contentsOf: url, options: [.uncached]),
-            let newContent = Content.decode(persistentData: data)
+            let newContent = unstamped(data: try? Data(contentsOf: url, options: [.uncached]))
+//                ,
+//            let newContent = Content.decode(persistentData: data)
         else { return }
 
-        #if TRACKPERSISTENCE
-            print("PersistentDataContainer<\(String(reflecting: Content.self))>: Load")
-        #endif
+//        #if TRACKPERSISTENCE
+        print("PersistentDataContainer<\(String(reflecting: Content.self))>: Load")
+//        #endif
 
         restore(content: newContent)
         updateContent(newContent)
 
-        currentTimestamp = modificationDate
+        currentFileTimestamp = modificationDate
         hasChanges = false
 
-        #if TRACKPERSISTENCE
-            print("Updated \(currentTimestamp)")
-        #endif
+//        #if TRACKPERSISTENCE
+        print("Updated \(currentFileTimestamp)")
+//        #endif
     }
 
     fileprivate func setupMetadataQuery() {
