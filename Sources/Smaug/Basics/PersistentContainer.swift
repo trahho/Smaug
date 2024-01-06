@@ -28,7 +28,7 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
     private(set) var hasChanges = false
 
     private var _content: Content?
-    
+
     fileprivate func setContent(_ newValue: Content) {
         objectWillChange.send()
         _content = newValue
@@ -37,7 +37,7 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
         }
         registerChanges()
     }
-    
+
     var content: Content {
         get { _content! }
         set {
@@ -79,17 +79,18 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
             willChangeSubscriber = nil
         }
     }
-    
+
     func stamped(content: Content) -> Data? {
-        guard let data = content.encode() else { return nil }
+        guard let data = content.encode(),
+              let compressedData = try? (data as NSData).compressed(using: .lzfse) as Data
+        else { return nil }
         currentDataTimestamp = Date().timeIntervalSince1970
         let string = String(currentDataTimestamp)
         let stampString = string + String(repeating: "0", count: timestampStringLenght - string.count)
         var stampedData = stampString.data(using: .ascii)
-        stampedData?.append(data)
+        stampedData?.append(compressedData)
         return stampedData
     }
-
 
     public func save() {
         let fileQueue = DispatchQueue(label: "de.kuehnerleben.smaug.file", qos: .background)
@@ -140,8 +141,7 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
                 isMerging = false
             } catch {}
         }
-            setContent(newContent)
-        
+        setContent(newContent)
     }
 
     func restore(content: Content) {
@@ -150,20 +150,22 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
         }
     }
 
-  
     func unstamped(data: Data?) -> Content? {
         guard var data else { return nil }
+        
         let stampData = data.subdata(in: 0 ..< timestampStringLenght)
         guard
             let stampString = String(data: stampData, encoding: .ascii),
             let dataTimestamp = Double(stampString),
             dataTimestamp > currentDataTimestamp
-        else {
-            return nil
-        }
+        else { return nil }
         data.removeSubrange(0 ..< timestampStringLenght)
-        guard let content = Content.decode(persistentData: data) else { return nil }
         
+        guard
+            let data = try? (data as NSData).decompressed(using: .lzfse) as Data,
+            let content = Content.decode(persistentData: data)
+        else { return nil }
+
         currentDataTimestamp = dataTimestamp
         return content
     }

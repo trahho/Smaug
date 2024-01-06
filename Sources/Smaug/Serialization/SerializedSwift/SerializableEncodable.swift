@@ -37,11 +37,9 @@ public extension SerializableEncodable {
         repeat {
             // If mirror is nil (no superclassMirror was nil), break
             guard let children = mirror?.children else { break }
-            
-            let sortedChildren = children.sorted { $0.label ?? "" < $1.label ?? "" }
-            
+                        
             // Try to encode each child
-            for child in sortedChildren {
+            for child in children {
                 guard let encodableKey = child.value as? EncodableProperty else { continue }
 
                 // Get the propertyName of the property. By syntax, the property name is

@@ -16,23 +16,12 @@ public protocol Persistent: DidChangeNotifier {
 
 public extension Persistent where Self: Serializable {
     func encode() -> Data? {
-        guard
-            let data = try? JSONEncoder().encode(self)
-
-//            , let compressedData = try? (data as NSData).compressed(using: .lzfse) as Data
-        else { return nil }
-
+        guard let data = try? JSONEncoder().encode(self) else { return nil }
         return data
-//        return compressedData
     }
 
     static func decode(persistentData: Data) -> Self? {
-        guard
-//            let data = try? (persistentData as NSData).decompressed(using: .lzfse) as Data,
-            // let newContent = try? JSONDecoder().decode(Self.self, from: data)
-            let newContent = try? JSONDecoder().decode(Self.self, from: persistentData)
-
-        else { return nil }
+        guard let newContent = try? JSONDecoder().decode(Self.self, from: persistentData) else { return nil }
         return newContent
     }
 }
