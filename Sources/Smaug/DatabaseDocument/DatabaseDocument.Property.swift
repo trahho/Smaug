@@ -32,9 +32,11 @@ public extension DatabaseDocument {
         override func setup(url: URL, name: String, document: DatabaseDocument) {
             let content = content()
             self.document = document
+            print ("Setting document for \(content.typeName)")
             content.document = document
             let url = url.appending(component: name + ".properties")
             container = PersistentContainer(url: url, content: content, commitOnChange: commitOnChange)
+            container.contentChange = { self.container.content.document = self.document }
             if publishChange {
                 cancellable = container.objectWillChange.sink { 
                     document.objectWillChange.send()

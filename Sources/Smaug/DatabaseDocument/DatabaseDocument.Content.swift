@@ -33,8 +33,12 @@ public extension DatabaseDocument {
             self.document = document
             let url = url.appending(component: name + ".persistent")
             container = PersistentContainer(url: url, content: content, commitOnChange: commitOnChange)
+//            container = PersistentContainer(url: url, content: content, commitOnChange: commitOnChange)
+//            container.contentChange = { self.container.content.document = self.document }
             if publishChange {
-                cancellable = container.objectWillChange.sink { document.objectWillChange.send() }
+                cancellable = container.objectWillChange.sink {
+                    self.document.objectWillChange.send()
+                }
             }
         }
         

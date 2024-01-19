@@ -13,6 +13,11 @@ open class ContentStore: Persistent, Serializable, ContentContainer, ObservableO
     public typealias PersistentValue = Codable & Equatable
 
     public internal(set) var document: DatabaseDocument!
+    {
+        didSet {
+            print ("Document set for \(self.typeName)")
+        }
+    }
 
     // MARK: - Enclosing
 

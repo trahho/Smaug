@@ -32,8 +32,10 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
     fileprivate func setContent(_ newValue: Content) {
         objectWillChange.send()
         _content = newValue
-        if _content != nil, let contentChange {
-            contentChange()
+        if _content != nil {
+            if let contentChange {
+                contentChange()
+            }
         }
         registerChanges()
     }
