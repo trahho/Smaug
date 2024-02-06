@@ -7,7 +7,7 @@
 
 import Foundation
 
-public indirect enum ValueStorage: TimedValueStorage {
+public indirect enum ValueStorage: DataStoreValueStorage {
     case a(Int)
     case b(Bool)
     case c(String)
@@ -16,7 +16,7 @@ public indirect enum ValueStorage: TimedValueStorage {
     case f([UUID])
     case g(UUID)
 
-    public init?(_ value: (any TimedValueStorage.PersistentValue)?) {
+    public init?(_ value: (any DataStoreValueStorage.PersistentValue)?) {
         if value == nil { return nil }
         else if let value = value as? Int { self = .a(value) }
         else if let value = value as? Bool { self = .b(value) }
@@ -29,7 +29,7 @@ public indirect enum ValueStorage: TimedValueStorage {
         //        else { fatalError("Storage for \(value?.typeName ?? "Hä?") not available") }
     }
 
-    public var value: (any TimedValueStorage.PersistentValue)? {
+    public var value: (any DataStoreValueStorage.PersistentValue)? {
         switch self {
         case let .a(value): return value
         case let .b(value): return value

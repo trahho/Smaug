@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct TimedValue<Storage: TimedValueStorage>: Serializable {
+struct TimedValue<Storage: DataStoreValueStorage>: Serializable {
     @Serialized private(set) var time: Date
     @Serialized private(set) var storage: Storage?
 
@@ -24,14 +24,14 @@ struct TimedValue<Storage: TimedValueStorage>: Serializable {
         }
     }
 
-    subscript<T: TimedValueStorage.PersistentValue>(type _: T.Type) -> T? {
+    subscript<T: DataStoreValueStorage.PersistentValue>(type _: T.Type) -> T? {
         guard let value else { return nil }
         return value as? T
     }
 
     init() {}
 
-    init(time: Date, value: (any TimedValueStorage.PersistentValue)?) {
+    init(time: Date, value: (any DataStoreValueStorage.PersistentValue)?) {
         self.time = time
         self.value = value
     }

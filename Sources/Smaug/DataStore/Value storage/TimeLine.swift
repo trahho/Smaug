@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct TimeLine<Storage: TimedValueStorage>: Serializable {
+struct TimeLine<Storage: DataStoreValueStorage>: Serializable {
     typealias Value = TimedValue<Storage>
 
     @Serialized private var values: [Value]
@@ -20,7 +20,7 @@ struct TimeLine<Storage: TimedValueStorage>: Serializable {
         values = []
     }
 
-    init(_ startValue: any TimedValueStorage.PersistentValue) {
+    init(_ startValue: any DataStoreValueStorage.PersistentValue) {
         values = [Value(time: Date.distantPast, value: startValue)]
     }
 
@@ -46,7 +46,7 @@ struct TimeLine<Storage: TimedValueStorage>: Serializable {
         values.last(where: { $0.time <= timestamp })
     }
 
-    subscript<T>(type type: T.Type, at timestamp: Date) -> T? where T: TimedValueStorage.PersistentValue {
+    subscript<T>(type type: T.Type, at timestamp: Date) -> T? where T: DataStoreValueStorage.PersistentValue {
         get {
             timedValue(at: timestamp)?[type: T.self]
         }

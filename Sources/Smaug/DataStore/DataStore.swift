@@ -10,8 +10,8 @@ import Foundation
 /// Jetzt kommt eine database, die aus mehreren databases besteht. Das wird ein Document. Und einen eigenen Container DatabaseContainer
 /// Das restore verliert wieder den content, denn der Container weiß es selber. Er gibt der Database sich selbst, und erhält vom Document
 
-open class DataStore<ValueStorage: TimedValueStorage>: ObjectStore {
-    public typealias PersistentValue = TimedValueStorage.PersistentValue
+open class DataStore<ValueStorage: DataStoreValueStorage>: ObjectStore {
+    public typealias PersistentValue = DataStoreValueStorage.PersistentValue
     public typealias Key = String
 
     @Serialized var timestamps: Set<Date>
