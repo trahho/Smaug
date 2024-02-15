@@ -65,7 +65,7 @@ open class DatabaseDocument: Reflectable, ObservableObject {
     }
     
     private(set) var writingTimestamp: Date! {
-        get { containerDocument?.writingTimestamp ?? _writingTimestamp ?? Date() }
+        get { containerDocument?.writingTimestamp ?? _writingTimestamp ?? Date.now }
         set {
             if let containerDocument {
                 containerDocument.writingTimestamp = newValue
@@ -91,7 +91,7 @@ open class DatabaseDocument: Reflectable, ObservableObject {
         
         let didStart = !isActive
         if didStart {
-            writingTimestamp = Date()
+            writingTimestamp = Date.now
         }
         change()
         if didStart {

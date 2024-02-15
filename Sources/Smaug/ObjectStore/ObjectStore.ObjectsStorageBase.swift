@@ -9,9 +9,6 @@ import Foundation
 public extension ObjectStore {
     class ObjectsStorageAbstract<T>: ObjectsStorage where T: Object {
         // MARK: - Key
-
-        var key: String?
-        var alternateKey: String?
         
         internal var instance: ObjectStore!
         
@@ -22,10 +19,10 @@ public extension ObjectStore {
 
         // MARK: - Initialization
 
-        public init(key: String? = nil, alternateKey: String? = nil) {
-            self.key = key
-            self.alternateKey = alternateKey
-        }
+//        public init(key: String? = nil, alternateKey: String? = nil) {
+//            self.key = key
+//            self.alternateKey = alternateKey
+//        }
 
         func getObject(id: T.ID) -> T? { fatalError() }
 

@@ -28,7 +28,7 @@ public extension ObjectStore.Object {
             get {
                 if let _value { return _value }
                 guard
-                    let document = instance.document
+                    let document = instance.store?.document
                 else { return [] }
                 if let objectKeyPath {
                     _value = document[Value.self].filter { $0[keyPath: objectKeyPath] == instance }
@@ -59,7 +59,7 @@ public extension ObjectStore.Object {
                 }
 
                 _value = newValue
-                if let document = instance.document {
+                if let document = instance.store?.document {
                     newValue.subtracting(value).forEach { value in
                         document.add(value)
                     }
@@ -74,7 +74,7 @@ public extension ObjectStore.Object {
                 guard newValue != _instance else { return }
                 _instance = newValue
                 cancellable = _instance!.objectWillChange.sink { [self] in
-                    if instance.document != nil {
+                    if instance.store?.document != nil {
                         _value = nil
                     }
                 }

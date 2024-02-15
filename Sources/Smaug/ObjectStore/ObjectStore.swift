@@ -18,6 +18,12 @@ open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, Content
     }
 
     public internal(set) var document: DatabaseDocument!
+    
+    // MARK: - Timing
+
+    var readingTimestamp: Date { document?.readingTimestamp ?? Date.distantFuture }
+    var writingTimestamp: Date { document?.writingTimestamp ?? Date.distantPast }
+
 
     // MARK: - Enclosing
 
@@ -75,6 +81,7 @@ open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, Content
 
         objectWillChange.send()
         storage.addObject(item: item)
+        item.added = writingTimestamp
         item.store = self
         item.adopt(document: document)
         objectDidChange.send()

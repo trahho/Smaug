@@ -8,8 +8,7 @@
 import Foundation
 
 public extension ObjectStore.Object {
-    class ReferenceStorage {
+    class ReferenceStorage : ObjectProperty {
         func adopt(document _: DatabaseDocument) {}
-        public init () {}
     }
 }

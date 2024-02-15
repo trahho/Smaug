@@ -47,15 +47,20 @@ public extension ObjectStore.Object {
 //
     // public extension ContentStore {
 
-    @propertyWrapper final class Property<Value> where Value: Codable {
+    class ObjectProperty {
+        var changed: Date?
+
+        public init() {}
+
+        func merge(instance _: ObjectStore.Object, other _: ObjectProperty) throws {}
+    }
+
+    @propertyWrapper final class Property<Value>: ObjectProperty where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
             get { fatalError() }
             set { fatalError() }
         }
-
-        var key: String?
-        var alternateKey: String?
 
         private var _value: Value?
 
@@ -67,23 +72,13 @@ public extension ObjectStore.Object {
             _value as! U
         }
 
-        public init(wrappedValue: @autoclosure @escaping () -> Value, _ key: String? = nil, alternateKey: String? = nil) {
-            self.key = key
-            self.alternateKey = alternateKey
+        public init(wrappedValue: @autoclosure @escaping () -> Value) {
             _value = wrappedValue()
         }
 
-        public init(_ key: String? = nil, alternateKey: String? = nil) {
-            self.key = key
-            self.alternateKey = alternateKey
-            _value = nil
-        }
-
-        public init() {}
-
         public static subscript<Enclosing: ObjectStore.Object>(_enclosingInstance instance: Enclosing,
-                                                         wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
-                                                         storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value
+                                                               wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
+                                                               storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
@@ -93,31 +88,40 @@ public extension ObjectStore.Object {
                 let storage = instance[keyPath: storageKeyPath]
                 instance.objectWillChange.send()
                 storage._value = newValue
+                storage.changed = instance.writingTimestamp
                 instance.store?.objectDidChange.send()
+            }
+        }
+
+        override func merge(instance: ObjectStore.Object, other: ObjectProperty) throws {
+            guard let other = other as? Self else { return }
+            if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
+                instance.objectWillChange.send()
+                _value = other._value
             }
         }
     }
 }
 
 extension ObjectStore.Object.Property: EncodableProperty {
+    struct Coded: Codable {
+        var value: Value?
+        var changed: Date
+    }
+
     public func encodeValue(from container: inout EncodeContainer, propertyName: String) throws {
-        guard let _value else { return }
-        let codingKey = SerializedCodingKeys(key: key ?? propertyName)
-        try container.encodeIfPresent(_value, forKey: codingKey)
+        guard let changed else { return }
+        let codingKey = SerializedCodingKeys(key: propertyName)
+        try container.encodeIfPresent(Coded(value: _value, changed: changed), forKey: codingKey)
     }
 }
 
 extension ObjectStore.Object.Property: DecodableProperty {
     public func decodeValue(from container: DecodeContainer, propertyName: String) throws {
-        let codingKey = SerializedCodingKeys(key: key ?? propertyName)
-        if let value = try? container.decodeIfPresent(Value.self, forKey: codingKey) {
-            _value = value
-        } else {
-            guard let altKey = alternateKey else { return }
-            let altCodingKey = SerializedCodingKeys(key: altKey)
-            if let value = try? container.decodeIfPresent(Value.self, forKey: altCodingKey) {
-                _value = value
-            }
+        let codingKey = SerializedCodingKeys(key: propertyName)
+        if let coded = try? container.decodeIfPresent(Coded.self, forKey: codingKey) {
+            _value = coded.value
+            changed = coded.changed
         }
     }
 }

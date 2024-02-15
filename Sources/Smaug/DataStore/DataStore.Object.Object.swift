@@ -34,7 +34,7 @@ public extension DataStore.Object {
             get {
                 if let _value { return _value }
                 guard
-                    let document = instance.document,
+                    let document = instance.store?.document,
                     let id = instance[Value.ID.self, key],
                     let value = document[Value.self, id]
                 else { return nil }
@@ -46,7 +46,7 @@ public extension DataStore.Object {
                 guard !instance.readOnly, value != newValue else { return }
                 instance[Value.ID.self, key] = newValue?.id
                 _value = newValue
-                if let document = instance.document, let newValue {
+                if let document = instance.store?.document, let newValue {
                     document.add(newValue)
                 }
             }
@@ -59,7 +59,7 @@ public extension DataStore.Object {
                 guard newValue != _instance else { return }
                 _instance = newValue
                 cancellable = _instance!.objectWillChange.sink { [self] in
-                    if instance.document != nil {
+                    if instance.store?.document != nil {
                         _value = nil
                     }
                 }

@@ -51,9 +51,8 @@ extension DataStore {
         }
     }
 
-    open class Object: ObjectStore.Object, Mergeable {
+    open class Object: ObjectStore.Object {
         @Serialized private(set) var values: [Key: TimedValue<ValueStorage>] = [:]
-        @Serialized var added: Date?
         @Property var deleted: Bool = false
 
         // MARK: - Changes
@@ -68,7 +67,7 @@ extension DataStore {
                 store?.didChange()
             }
 
-            if let document {
+            if let document = store?.document {
                 document.change {
                     action()
                 }
@@ -81,10 +80,7 @@ extension DataStore {
             objectWillChange.send()
         }
 
-        // MARK: - Timing
-
-        var readingTimestamp: Date { document?.readingTimestamp ?? Date.distantFuture }
-        var writingTimestamp: Date { document?.writingTimestamp ?? Date.distantPast }
+     
 
         // MARK: - State
 
@@ -106,7 +102,7 @@ extension DataStore {
 
         // MARK: - Merging
 
-        open func merge(other: Mergeable) throws {
+        open override func merge(other: Mergeable) throws {
             guard let other = other as? Self, other.id == id else { return }
 
             willChange()

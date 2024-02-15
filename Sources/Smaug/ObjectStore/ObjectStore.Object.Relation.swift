@@ -34,7 +34,7 @@ public extension ObjectStore.Object {
             get {
                 if let _value { return _value }
                 guard
-                    let document = instance.document
+                    let document = instance.store?.document
                 else { return nil }
                 if let objectKeyPath {
                     _value = document[Value.self].first(where: { $0[keyPath: objectKeyPath] == instance })
@@ -55,7 +55,7 @@ public extension ObjectStore.Object {
                     if let newValue { newValue[keyPath: objectsKeyPath].insert(instance) }
                 }
                 _value = newValue
-                if let document = instance.document, let newValue {
+                if let document = instance.store?.document, let newValue {
                     document.add(newValue)
                 }
             }
@@ -68,7 +68,7 @@ public extension ObjectStore.Object {
                 guard newValue != _instance else { return }
                 _instance = newValue
                 cancellable = _instance!.objectWillChange.sink { [self] in
-                    if instance.document != nil {
+                    if instance.store?.document != nil {
                         _value = nil
                     }
                 }

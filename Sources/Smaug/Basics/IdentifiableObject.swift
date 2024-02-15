@@ -21,5 +21,5 @@ open class IdentifiableObject: Identifiable, Hashable {
         hasher.combine(id)
     }
     
-    public init() {}
+    public required init() {}
 }

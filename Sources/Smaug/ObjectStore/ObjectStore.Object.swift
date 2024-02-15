@@ -9,16 +9,22 @@ import Combine
 import Foundation
 
 extension ObjectStore {
-    open class Object: PersistentObject, ObservableObject, Reflectable {
+    open class Object: IdentifiableObject, ObservableObject, Reflectable, Mergeable {
         var store: ObjectStore?
-        var document: DatabaseDocument? { store?.document }
+//        var document: DatabaseDocument? { store?.document }
         public internal(set) var isStatic = false
+        
+        var added: Date?
 
         var readOnly: Bool {
-            if let document {
-                return document.readOnly || (!document.inSetup && isStatic)
-            } else { return false }
+            guard let document = store?.document else { return false }
+            return document.readOnly || (!document.inSetup && isStatic)
         }
+        
+        // MARK: - Timing
+
+        var readingTimestamp: Date { store?.readingTimestamp ?? Date.distantFuture }
+        var writingTimestamp: Date { store?.writingTimestamp ?? Date.distantPast }
 
         func adopt(document: DatabaseDocument) {
             mirror(for: ReferenceStorage.self).map { $0.value }.forEach { $0.adopt(document: document) }
@@ -43,5 +49,16 @@ extension ObjectStore {
         public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
             store![type, name]
         }
+        
+        open func merge(other: Mergeable) throws {
+            guard let other = other as? Self, other.id == id else { return }
+
+            if let added, let otherAdded = other.added, otherAdded < added { self.added = other.added }
+            
+            for (own, other) in zip(mirror(for: ObjectProperty.self), other.mirror(for: ObjectProperty.self)) {
+                try own.value.merge(instance: self, other: other.value)
+            }
+        }
     }
 }
+
