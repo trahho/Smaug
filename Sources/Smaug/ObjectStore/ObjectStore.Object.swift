@@ -9,7 +9,7 @@ import Combine
 import Foundation
 
 extension ObjectStore {
-    open class Object: IdentifiableObject, ObservableObject, Reflectable, Mergeable {
+    open class Object: PersistentObject, ObservableObject, Reflectable, Mergeable {
         var store: ObjectStore?
 //        var document: DatabaseDocument? { store?.document }
         public internal(set) var isStatic = false

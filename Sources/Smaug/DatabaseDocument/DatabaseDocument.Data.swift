@@ -20,7 +20,7 @@ public extension DatabaseDocument {
 
         // MARK: - Content
 
-        var container: ObjectStoreContainer<T>!
+        var container: ObjectStore.Container<T>!
         var commitOnChange: Bool
         var publishChange: Bool
         var cancellable: AnyCancellable!
@@ -36,7 +36,7 @@ public extension DatabaseDocument {
             staticContent = T()
             staticContent.document = document
             let url = url.appending(component: name + ".data")
-            container = ObjectStoreContainer(document: document, url: url, content: T(), commitOnChange: commitOnChange)
+            container = ObjectStore.Container(document: document, url: url, content: T(), commitOnChange: commitOnChange)
             if publishChange {
                 cancellable = container!.objectWillChange.sink { document.objectWillChange.send() }
             }

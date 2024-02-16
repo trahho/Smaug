@@ -7,7 +7,7 @@
 
 import Foundation
 
-public extension ContentStore {
+public extension PropertyStore {
     @propertyWrapper final class Property<Value> where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
@@ -42,7 +42,7 @@ public extension ContentStore {
 
         public init() {}
 
-        public static subscript<Enclosing: ContentStore>(_enclosingInstance instance: Enclosing,
+        public static subscript<Enclosing: PropertyStore>(_enclosingInstance instance: Enclosing,
                                                          wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
                                                          storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value
         {
@@ -61,7 +61,7 @@ public extension ContentStore {
     }
 }
 
-extension ContentStore.Property: EncodableProperty {
+extension PropertyStore.Property: EncodableProperty {
     public func encodeValue(from container: inout EncodeContainer, propertyName: String) throws {
         guard let _value else { return }
         let codingKey = SerializedCodingKeys(key: key ?? propertyName)
@@ -69,7 +69,7 @@ extension ContentStore.Property: EncodableProperty {
     }
 }
 
-extension ContentStore.Property: DecodableProperty {
+extension PropertyStore.Property: DecodableProperty {
     public func decodeValue(from container: DecodeContainer, propertyName: String) throws {
         let codingKey = SerializedCodingKeys(key: key ?? propertyName)
         if let value = try? container.decodeIfPresent(Value.self, forKey: codingKey) {

@@ -97,7 +97,12 @@ public extension ObjectStore.Object {
             guard let other = other as? Self else { return }
             if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
                 instance.objectWillChange.send()
-                _value = other._value
+                if let ownValue =  _value as? Mergeable, let otherValue = other._value as? Mergeable
+                {
+                    try ownValue.merge(other: otherValue)
+                } else {
+                    _value = other._value
+                }
             }
         }
     }

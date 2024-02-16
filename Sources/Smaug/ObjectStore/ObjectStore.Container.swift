@@ -7,8 +7,8 @@
 
 import Foundation
 
-extension DatabaseDocument {
-    class ObjectStoreContainer<T>: PersistentContainer<T> where T: ObjectStore {
+extension ObjectStore {
+    class Container<T>: PersistentContainer<T> where T: ObjectStore {
         var document: DatabaseDocument
 
         init(document: DatabaseDocument, url: URL, content: T, commitOnChange: Bool = false, configureContent: PersistentContainer<T>.ContentDelegate? = nil) {

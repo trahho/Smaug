@@ -9,7 +9,7 @@ import Combine
 import Foundation
  
 open class PersistentObject: IdentifiableObject, Serializable {
-    override public required init() {
+    public required init() {
         super.init()
     }
 }

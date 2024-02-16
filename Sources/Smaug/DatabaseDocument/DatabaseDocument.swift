@@ -43,7 +43,7 @@ open class DatabaseDocument: Reflectable, ObservableObject {
     
     private var _readingTimestamp: Date?
     private(set) var readingTimestamp: Date! {
-        get { containerDocument?.readingTimestamp ?? _readingTimestamp ?? Date.distantFuture }
+        get { containerDocument?.readingTimestamp ?? _readingTimestamp ?? .distantFuture }
         set {
             if let containerDocument {
                 containerDocument.readingTimestamp = newValue
@@ -65,7 +65,7 @@ open class DatabaseDocument: Reflectable, ObservableObject {
     }
     
     private(set) var writingTimestamp: Date! {
-        get { containerDocument?.writingTimestamp ?? _writingTimestamp ?? Date.now }
+        get { containerDocument?.writingTimestamp ?? _writingTimestamp ?? .now }
         set {
             if let containerDocument {
                 containerDocument.writingTimestamp = newValue
@@ -191,7 +191,7 @@ open class DatabaseDocument: Reflectable, ObservableObject {
 //        guard let storage = self[KeyPath]
 //    }
 //
-    public subscript<T>(dynamicMember keyPath: ReferenceWritableKeyPath<DatabaseDocument, T>) -> T where T: ContentStore {
+    public subscript<T>(dynamicMember keyPath: ReferenceWritableKeyPath<DatabaseDocument, T>) -> T where T: PropertyStore {
         get { self[keyPath: keyPath] }
         set { self[keyPath: keyPath] = newValue }
     }

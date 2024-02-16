@@ -12,7 +12,7 @@ public extension DatabaseDocument {
     class PropertyStorage: Storage {}
 
     @propertyWrapper
-    final class Property<T>: PropertyStorage where T: ContentStore {
+    final class Property<T>: PropertyStorage where T: PropertyStore {
         // MARK: - Initialization
 
         public init(wrappedValue: @autoclosure @escaping () -> T, publishChange: Bool = true, commitOnChange: Bool = true) {
@@ -35,8 +35,7 @@ public extension DatabaseDocument {
             print ("Setting document for \(content.typeName)")
             content.document = document
             let url = url.appending(component: name + ".properties")
-            container = PersistentContainer(url: url, content: content, commitOnChange: commitOnChange)
-            container.contentChange = { self.container.content.document = self.document }
+            container = PropertyStore.Container(document: document, url: url, content: content, commitOnChange: commitOnChange)
             if publishChange {
                 cancellable = container.objectWillChange.sink { 
                     document.objectWillChange.send()

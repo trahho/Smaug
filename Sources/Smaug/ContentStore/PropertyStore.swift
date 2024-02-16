@@ -7,7 +7,7 @@
 
 import Foundation
 
-open class ContentStore: Persistent, Serializable, ContentContainer, ObservableObject, Reflectable {
+open class PropertyStore: Persistent, Serializable, ContentContainer, ObservableObject, Reflectable {
     // MARK: - Types
 
     public typealias PersistentValue = Codable & Equatable
@@ -65,7 +65,7 @@ open class ContentStore: Persistent, Serializable, ContentContainer, ObservableO
 extension DatabaseDocument {
     @propertyWrapper
     final class Projected<Value> {
-        var keyPath: ReferenceWritableKeyPath<ContentStore, Value>
+        var keyPath: ReferenceWritableKeyPath<PropertyStore, Value>
 
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
@@ -73,11 +73,11 @@ extension DatabaseDocument {
             set { fatalError() }
         }
 
-        init(_ keyPath: ReferenceWritableKeyPath<ContentStore, Value>) {
+        init(_ keyPath: ReferenceWritableKeyPath<PropertyStore, Value>) {
             self.keyPath = keyPath
         }
 
-        public static subscript<Enclosing: ContentStore>(_enclosingInstance instance: Enclosing,
+        public static subscript<Enclosing: PropertyStore>(_enclosingInstance instance: Enclosing,
                                                          wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
                                                          storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Projected>) -> Value
         {

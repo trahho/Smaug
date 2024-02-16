@@ -47,8 +47,8 @@ public extension ObjectStore {
         fileprivate func mergeItems(_ other: ObjectStore.ObjectsStorageBase<T>) throws {
             try Set(storage.keys).intersection(Set(other.storage.keys))
                 .forEach { key in
-                    let ownMergeable = storage[key] as! Mergeable
-                    let otherMergeable = other.storage[key] as! Mergeable
+                    let ownMergeable = storage[key]!
+                    let otherMergeable = other.storage[key]!
                     try ownMergeable.merge(other: otherMergeable)
                 }
         }
