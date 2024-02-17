@@ -37,6 +37,21 @@ open class DatabaseDocument: Reflectable, ObservableObject {
         }
     }
     
+    public struct Configuration {
+        let appName: String
+        let documentExtension: String
+    }
+    
+    public convenience init(name: String, local: Bool, configuration: Configuration) {
+        let containerURL = local ? Self.localContainerUrl.appendingPathComponent(configuration.appName) : Self.iCloudContainerUrl
+        let url = containerURL.appendingPathComponent("\(name)\(configuration.documentExtension)")
+        self.init(url: url)
+    }
+    
+    private static var iCloudContainerUrl: URL { URL.iCloudDirectory.appendingPathComponent("Documents") }
+
+    private static var localContainerUrl: URL { URL.localDirectory }
+
     open func setup() {}
     
     // MARK: - Transactional change
