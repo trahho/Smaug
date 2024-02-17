@@ -9,13 +9,8 @@ import Foundation
 public extension ObjectStore {
     class ObjectsStorageAbstract<T>: ObjectsStorage where T: Object {
         // MARK: - Key
-        
-        internal var instance: ObjectStore!
-        
-        var value: Set<T> {
-            instance.document[T.self]
-        }
-        
+
+        var value: Set<T> { fatalError() }
 
         // MARK: - Initialization
 
@@ -31,20 +26,47 @@ public extension ObjectStore {
         func addObject(item: T) { fatalError() }
     }
 
-    class ObjectsStorageBase<T>: ObjectsStorageAbstract<T> where T: Object {
+    class ObjectsStorageBase<Enclosing, T>: ObjectsStorageAbstract<T> where Enclosing: ObjectStore, T: Object {
         // MARK: - Types
 
         typealias StorageDictionary = [T.ID: T]
+        
+        var instance: Enclosing!
+        var keyPath: ReferenceWritableKeyPath<Enclosing, Set<T>>?
+
+        override var value: Set<T> {
+            instance.document[T.self]
+        }
+
+        func accessing() {
+            guard let instance, let keyPath else { return }
+            instance._$observationRegistrar.access(instance, keyPath: keyPath)
+        }
+
+        func change(by action: () -> ()) {
+            guard let instance, let keyPath else {
+                action()
+                return
+            }
+
+            instance.objectWillChange.send()
+            instance._$observationRegistrar.withMutation(of: instance, keyPath: keyPath) {
+                action()
+            }
+            instance.objectDidChange.send()
+        }
 
         // MARK: - Restoration
 
         override public func merge(other: Mergeable) throws {
             guard Self.self is Mergeable, let other = other as? Self else { return }
-            try mergeItems(other)
-            importItems(other)
+            change {
+                try! mergeItems(other)
+                importItems(other)
+            }
         }
 
-        fileprivate func mergeItems(_ other: ObjectStore.ObjectsStorageBase<T>) throws {
+        fileprivate func mergeItems(_ other: ObjectStore.ObjectsStorageBase<Enclosing, T>) throws {
             try Set(storage.keys).intersection(Set(other.storage.keys))
                 .forEach { key in
                     let ownMergeable = storage[key]!
@@ -53,7 +75,7 @@ public extension ObjectStore {
                 }
         }
 
-        fileprivate func importItems(_ other: ObjectStore.ObjectsStorageBase<T>) {
+        fileprivate func importItems(_ other: ObjectStore.ObjectsStorageBase<Enclosing, T>) {
             Set(other.storage.keys).subtracting(Set(storage.keys))
                 .forEach { key in
                     guard let item = other.storage[key] else { return }
@@ -80,7 +102,9 @@ public extension ObjectStore {
 
         override func addObject(item: T) {
             guard storage[item.id] == nil else { return }
-            storage[item.id] = item
+            change {
+                storage[item.id] = item
+            }
         }
     }
 }

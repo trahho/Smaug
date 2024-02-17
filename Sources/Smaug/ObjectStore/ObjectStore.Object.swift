@@ -7,18 +7,25 @@
 
 import Combine
 import Foundation
+import Observation
 
 extension ObjectStore {
-    open class Object: PersistentObject, ObservableObject, Reflectable, Mergeable {
+    open class Object: PersistentObject, ObservableObject, Reflectable, Mergeable, Observable {
         var store: ObjectStore?
 //        var document: DatabaseDocument? { store?.document }
         public internal(set) var isStatic = false
         
         var added: Date?
+        
+        internal let _$observationRegistrar = Observation.ObservationRegistrar()
 
         var readOnly: Bool {
             guard let document = store?.document else { return false }
             return document.readOnly || (!document.inSetup && isStatic)
+        }
+        
+        required public init() {
+            
         }
         
         // MARK: - Timing
@@ -55,8 +62,8 @@ extension ObjectStore {
 
             if let added, let otherAdded = other.added, otherAdded < added { self.added = other.added }
             
-            for (own, other) in zip(mirror(for: ObjectProperty.self), other.mirror(for: ObjectProperty.self)) {
-                try own.value.merge(instance: self, other: other.value)
+            for (own, other) in zip(mirror(for: Mergeable.self), other.mirror(for: Mergeable.self)) {
+                try own.value.merge(other: other.value)
             }
         }
     }

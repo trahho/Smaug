@@ -52,10 +52,10 @@ public extension ObjectStore.Object {
 
         public init() {}
 
-        func merge(instance _: ObjectStore.Object, other _: ObjectProperty) throws {}
+//        func merge(instance _: ObjectStore.Object, other _: ObjectProperty) throws {}
     }
 
-    @propertyWrapper final class Property<Value>: ObjectProperty where Value: Codable {
+    @propertyWrapper final class Property<Enclosing, Value>: Mergeable where Enclosing: ObjectStore.Object, Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
             get { fatalError() }
@@ -63,6 +63,7 @@ public extension ObjectStore.Object {
         }
 
         private var _value: Value?
+        private var changed: Date?
 
         private func value<U>(_: U.Type) -> U? where U: ExpressibleByNilLiteral {
             _value as? U
@@ -76,32 +77,54 @@ public extension ObjectStore.Object {
             _value = wrappedValue()
         }
 
-        public static subscript<Enclosing: ObjectStore.Object>(_enclosingInstance instance: Enclosing,
-                                                               wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
-                                                               storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value
+        public static subscript(_enclosingInstance instance: Enclosing,
+                                wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Value>,
+                                storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
+                storage.instance = instance
+                storage.keyPath = wrappedKeyPath
+                instance._$observationRegistrar.access(instance, keyPath: wrappedKeyPath)
                 return storage.value(Value.self)
             }
             set {
                 let storage = instance[keyPath: storageKeyPath]
-                instance.objectWillChange.send()
-                storage._value = newValue
-                storage.changed = instance.writingTimestamp
-                instance.store?.objectDidChange.send()
+                storage.instance = instance
+                storage.keyPath = wrappedKeyPath
+                storage.change {
+                    storage._value = newValue
+                    storage.changed = instance.writingTimestamp
+                }
             }
         }
 
-        override func merge(instance: ObjectStore.Object, other: ObjectProperty) throws {
+        private weak var instance: Enclosing?
+        private var keyPath: ReferenceWritableKeyPath<Enclosing, Value>?
+
+        func change(by action: () -> ()) {
+            guard let instance, let keyPath else {
+                action()
+                return
+            }
+
+            instance.objectWillChange.send()
+            instance._$observationRegistrar.withMutation(of: instance, keyPath: keyPath) {
+                action()
+            }
+            instance.store?.objectDidChange.send()
+        }
+
+        public func merge(other: Mergeable) throws {
             guard let other = other as? Self else { return }
             if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
-                instance.objectWillChange.send()
-                if let ownValue =  _value as? Mergeable, let otherValue = other._value as? Mergeable
-                {
-                    try ownValue.merge(other: otherValue)
-                } else {
-                    _value = other._value
+                change {
+                    changed = otherChanged
+                    if let ownValue = _value as? Mergeable, let otherValue = other._value as? Mergeable {
+                        try! ownValue.merge(other: otherValue)
+                    } else {
+                        _value = other._value
+                    }
                 }
             }
         }

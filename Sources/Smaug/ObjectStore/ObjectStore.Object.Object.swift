@@ -9,7 +9,7 @@ import Combine
 import Foundation
 
 public extension ObjectStore.Object {
-    @propertyWrapper final class Object<Value>: ReferenceStorage where Value: ObjectStore.Object {
+    @propertyWrapper final class Object<Enclosing, Value>: ReferenceStorage where Enclosing: ObjectStore.Object, Value: ObjectStore.Object {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value? {
             get { fatalError() }
@@ -20,9 +20,14 @@ public extension ObjectStore.Object {
 
         private var _id: Value.ID?
         private var _value: Value?
+        private var changed: Date?
+
+        private weak var _instance: Enclosing?
+        private var keyPath: ReferenceWritableKeyPath<Enclosing, Value?>?
 
         var value: Value? {
             get {
+                instance._$observationRegistrar.access(instance, keyPath: keyPath!)
                 if let _value { return _value }
                 guard
                     let document = instance.store?.document,
@@ -35,18 +40,18 @@ public extension ObjectStore.Object {
             }
             set {
                 guard !instance.readOnly, value != newValue else { return }
-                instance.objectWillChange.send()
-                _id = newValue?.id
-                _value = newValue
-                changed = instance.writingTimestamp
+                change {
+                    _id = newValue?.id
+                    _value = newValue
+                    changed = instance.writingTimestamp
+                }
                 if let document = instance.store?.document, let newValue {
                     document.add(newValue)
                 }
             }
         }
 
-        private weak var _instance: ObjectStore.Object?
-        private var instance: ObjectStore.Object {
+        private var instance: Enclosing {
             get { _instance! }
             set {
                 guard newValue != _instance else { return }
@@ -62,30 +67,36 @@ public extension ObjectStore.Object {
         override func adopt(document: DatabaseDocument) {
             if let _value { document.add(_value) }
         }
-        
-        override func merge(instance: ObjectStore.Object, other: ObjectProperty) throws {
-            guard let other = other as? Self else { return }
-            if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
-                instance.objectWillChange.send()
-                _id = other._id
-                _value = nil
-            }
-        }
 
-        public static subscript<Enclosing: ObjectStore.Object>(_enclosingInstance instance: Enclosing,
-                                                               wrapped _: ReferenceWritableKeyPath<Enclosing, Value?>,
-                                                               storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Object>) -> Value?
+        public static subscript(_enclosingInstance instance: Enclosing,
+                                wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Value?>,
+                                storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Object>) -> Value?
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
+                storage.keyPath = wrappedKeyPath
                 return storage.value
             }
             set {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
+                storage.keyPath = wrappedKeyPath
                 storage.value = newValue
             }
+        }
+
+        func change(by action: () -> ()) {
+            guard let instace = _instance, let keyPath else {
+                action()
+                return
+            }
+
+            instance.objectWillChange.send()
+            instance._$observationRegistrar.withMutation(of: instance, keyPath: keyPath) {
+                action()
+            }
+            instance.store?.objectDidChange.send()
         }
     }
 }
@@ -93,8 +104,11 @@ public extension ObjectStore.Object {
 extension ObjectStore.Object.Object: Mergeable {
     public func merge(other: Mergeable) throws {
         guard let other = other as? Self else { return }
-        if let otherChanged = other.changed, otherChanged > changed ?? Date.distantPast {
-            _value = other._value
+        if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
+            change {
+                _id = other._id
+                _value = nil
+            }
         }
     }
 }

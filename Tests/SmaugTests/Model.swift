@@ -14,11 +14,11 @@ class Document: DatabaseDocument {
     @Transient var c: C
 }
 
-class A: DataStore<ValueStorage> {
+class A: ObjectStore {
     @Objects var aa: Set<A>
 }
 
-class B: DataStore<ValueStorage> {
+class B: ObjectStore {
     @Objects var bb: Set<B>
 }
 
@@ -29,7 +29,7 @@ class C: ObjectMemory {
 
 extension A {
     class A: Object {
-        @Property var s: String
+        @Property var s: String = ""
         @Object var b: B.B!
         @Objects var bb: Set<B.B>
         @Relation(\C.C.a) var c: C.C!
@@ -38,7 +38,7 @@ extension A {
 
 extension B {
     class B: Object {
-        @Property var s: String
+        @Property var s: String = ""
         @Relation(\A.A.b) var a: A.A!
         @Relation(\A.A.bb) var a1: A.A!
         @Relations(\A.A.bb) var aa: Set<A.A>
@@ -47,7 +47,7 @@ extension B {
 
 extension C {
     class C: Object {
-        @Property var s: String
+        @Property var s: String = ""
         @Object var a: A.A!
     }
 }

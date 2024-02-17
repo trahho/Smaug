@@ -9,7 +9,7 @@ import Combine
 import Foundation
 
 public extension ObjectStore.Object {
-    @propertyWrapper final class Objects<Value>: ReferenceStorage where Value: ObjectStore.Object {
+    @propertyWrapper final class Objects<Enclosing, Value>: ReferenceStorage where Enclosing: ObjectStore.Object, Value: ObjectStore.Object {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Set<Value> {
             get { fatalError() }
@@ -20,6 +20,7 @@ public extension ObjectStore.Object {
 
         private var _ids: Set<Value.ID>?
         private var _value: Set<Value>?
+        private var changed: Date?
         
         var value: Set<Value> {
             get {
@@ -34,14 +35,16 @@ public extension ObjectStore.Object {
             }
             set {
                 guard !instance.readOnly,  value != newValue else { return }
-                instance.objectWillChange.send()
-                _ids = newValue.map { $0.id }.asSet
-                _value = newValue
+                change {
+                    _ids = newValue.map { $0.id }.asSet
+                    _value = newValue
+                }
             }
         }
 
-        private weak var _instance: ObjectStore.Object?
-        private var instance: ObjectStore.Object {
+        private var keyPath: ReferenceWritableKeyPath<Enclosing, Set<Value>>?
+        private weak var _instance: Enclosing?
+        private var instance: Enclosing {
             get { _instance! }
             set {
                 guard newValue != _instance else { return }
@@ -58,28 +61,48 @@ public extension ObjectStore.Object {
             if let _value { _value.forEach { document.add($0) }}
         }
         
-        override func merge(instance: ObjectStore.Object, other: ObjectProperty) throws {
-            guard let other = other as? Self else { return }
-            if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
-                instance.objectWillChange.send()
-                _ids = other._ids
-                _value = nil
+        func change(by action: () -> ()) {
+            guard let instace = _instance, let keyPath else {
+                action()
+                return
             }
-        }
 
-        public static subscript<Enclosing: ObjectStore.Object>(_enclosingInstance instance: Enclosing,
-                                                               wrapped _: ReferenceWritableKeyPath<Enclosing, Set<Value>>,
+            instance.objectWillChange.send()
+            instance._$observationRegistrar.withMutation(of: instance, keyPath: keyPath) {
+                action()
+            }
+            instance.store?.objectDidChange.send()
+        }
+        
+     
+
+        public static subscript(_enclosingInstance instance: Enclosing,
+                                                               wrapped wrapppedKeyPath: ReferenceWritableKeyPath<Enclosing, Set<Value>>,
                                                                storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Objects>) -> Set<Value>
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
+                storage.keyPath = wrapppedKeyPath
                 return storage.value
             }
             set {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
+                storage.keyPath = wrapppedKeyPath
                 storage.value = newValue
+            }
+        }
+    }
+}
+
+extension ObjectStore.Object.Objects: Mergeable {
+    public func merge(other: Mergeable) throws {
+        guard let other = other as? Self else { return }
+        if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
+            change {
+                _ids = other._ids
+                _value = nil
             }
         }
     }

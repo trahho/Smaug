@@ -58,6 +58,7 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
     fileprivate func registerChanges() {
         guard let _content else { return }
         didChangeSubcriber = _content.objectDidChange
+            .filter { !self.isMerging }
             .debounce(for: .seconds(1.5), scheduler: RunLoop.main)
             .sink { [self] in
                 guard !isMerging else { return }
@@ -154,7 +155,7 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
 
     func unstamped(data: Data?) -> Content? {
         guard var data else { return nil }
-        
+
         let stampData = data.subdata(in: 0 ..< timestampStringLenght)
         guard
             let stampString = String(data: stampData, encoding: .ascii),
@@ -162,7 +163,7 @@ public class PersistentContainer<Content: Persistent>: ObservableObject {
             dataTimestamp > currentDataTimestamp
         else { return nil }
         data.removeSubrange(0 ..< timestampStringLenght)
-        
+
         guard
             let data = try? (data as NSData).decompressed(using: .lzfse) as Data,
             let content = Content.decode(persistentData: data)

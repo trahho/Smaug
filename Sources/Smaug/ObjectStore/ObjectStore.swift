@@ -6,8 +6,9 @@
 //
 
 import Foundation
+import Observation
 
-open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, ContentContainer, ObservableObject, Reflectable {
+open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, ContentContainer, ObservableObject, Observable,  Reflectable {
     // MARK: - Types
 
     public typealias PersistentValue = Codable & Equatable
@@ -28,6 +29,8 @@ open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, Content
     // MARK: - Enclosing
 
     public var objectDidChange: ObjectDidChangePublisher = .init()
+    internal let _$observationRegistrar = Observation.ObservationRegistrar()
+
 
     // MARK: - Initialisation
 
