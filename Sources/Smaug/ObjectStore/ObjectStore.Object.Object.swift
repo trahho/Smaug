@@ -87,7 +87,7 @@ public extension ObjectStore.Object {
         }
 
         func change(by action: () -> ()) {
-            guard let instace = _instance, let keyPath else {
+            guard let instance = _instance, let keyPath else {
                 action()
                 return
             }

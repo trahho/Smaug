@@ -11,6 +11,16 @@ extension DatabaseDocument {
     enum Failure: Error {
         case typeNotFound
     }
+    
+    public struct Configuration {
+        let appName: String
+        let documentExtension: String
+        
+        public init(appName: String, documentExtension: String) {
+            self.appName = appName
+            self.documentExtension = documentExtension
+        }
+    }
 }
 
 @dynamicMemberLookup
@@ -35,11 +45,6 @@ open class DatabaseDocument: Reflectable, ObservableObject {
             $0.value.load()
             $0.value.start()
         }
-    }
-    
-    public struct Configuration {
-        let appName: String
-        let documentExtension: String
     }
     
     public convenience init(name: String, local: Bool, configuration: Configuration) {
