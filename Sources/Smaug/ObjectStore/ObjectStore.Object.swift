@@ -34,7 +34,11 @@ extension ObjectStore {
         var writingTimestamp: Date { store?.writingTimestamp ?? Date.distantPast }
 
         func adopt(document: DatabaseDocument) {
-            mirror(for: ReferenceStorage.self).map { $0.value }.forEach { $0.adopt(document: document) }
+            mirror(for: ReferenceStorage.self).map {
+                $0.value
+            }.forEach {
+                $0.adopt(document: document)
+            }
         }
 
         public subscript<T>(_ type: T.Type, _ id: T.ID) -> T? where T: ObjectStore.Object {

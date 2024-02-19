@@ -58,14 +58,17 @@ public extension DatabaseDocument {
 
         override func getObject<Result>(type: Result.Type, id: Result.ID) throws -> Result? where Result: ObjectStore.Object {
             guard let result = try content.getObject(type: type, id: id) else {
+                showAccess()
                 return try staticContent.getObject(type: type, id: id)
             }
+            showAccess()
             return result
         }
 
         override func getObjects<Result>(type: Result.Type) throws -> Set<Result> where Result: ObjectStore.Object {
             let staticObjects = try staticContent.getObjects(type: type)
             let dynamicObjects = try content.getObjects(type: type)
+            showAccess()
             return staticObjects.union(dynamicObjects)
         }
 
@@ -76,7 +79,9 @@ public extension DatabaseDocument {
 //                print("Static added \(T.self)")
                 return
             }
-            try content.addObject(item: item)
+            try withMutation {
+                try content.addObject(item: item)
+            }
             print("Persistent added \(T.self)")
         }
 
@@ -89,11 +94,13 @@ public extension DatabaseDocument {
         }
 
         public static subscript<Enclosing: DatabaseDocument>(_enclosingInstance instance: Enclosing,
-                                                             wrapped _: ReferenceWritableKeyPath<Enclosing, T>,
+                                                             wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, T>,
                                                              storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Data>) -> T
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
+                storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                storage.showAccess()
                 return storage.content
             }
             set {}

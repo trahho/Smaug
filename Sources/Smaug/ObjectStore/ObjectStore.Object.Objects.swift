@@ -9,7 +9,7 @@ import Combine
 import Foundation
 
 public extension ObjectStore.Object {
-    @propertyWrapper final class Objects<Enclosing, Value>: ReferenceStorage where Enclosing: ObjectStore.Object, Value: ObjectStore.Object {
+    @propertyWrapper final class Objects<Value>: ReferenceStorage where Value: ObjectStore.Object {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Set<Value> {
             get { fatalError() }
@@ -21,7 +21,7 @@ public extension ObjectStore.Object {
         private var _ids: Set<Value.ID>?
         private var _value: Set<Value>?
         private var changed: Date?
-        
+
         var value: Set<Value> {
             get {
                 if let _value { return _value }
@@ -34,17 +34,14 @@ public extension ObjectStore.Object {
                 return _value!
             }
             set {
-                guard !instance.readOnly,  value != newValue else { return }
-                change {
-                    _ids = newValue.map { $0.id }.asSet
-                    _value = newValue
-                }
+                guard !instance.readOnly, value != newValue else { return }
+                _ids = newValue.map { $0.id }.asSet
+                _value = newValue
             }
         }
 
-        private var keyPath: ReferenceWritableKeyPath<Enclosing, Set<Value>>?
-        private weak var _instance: Enclosing?
-        private var instance: Enclosing {
+        private weak var _instance: ObjectStore.Object?
+        private var instance: ObjectStore.Object {
             get { _instance! }
             set {
                 guard newValue != _instance else { return }
@@ -60,37 +57,26 @@ public extension ObjectStore.Object {
         override func adopt(document: DatabaseDocument) {
             if let _value { _value.forEach { document.add($0) }}
         }
-        
-        func change(by action: () -> ()) {
-            guard let instance = _instance, let keyPath else {
-                action()
-                return
-            }
 
-            instance.objectWillChange.send()
-            instance._$observationRegistrar.withMutation(of: instance, keyPath: keyPath) {
-                action()
-            }
-            instance.store?.objectDidChange.send()
-        }
-        
-     
-
-        public static subscript(_enclosingInstance instance: Enclosing,
-                                                               wrapped wrapppedKeyPath: ReferenceWritableKeyPath<Enclosing, Set<Value>>,
-                                                               storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Objects>) -> Set<Value>
+        public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
+                                           wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Set<Value>>,
+                                           storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Objects>) -> Set<Value> where Enclosing: ObjectStore.Object
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
-                storage.keyPath = wrapppedKeyPath
+                storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                storage.showAccess()
                 return storage.value
             }
             set {
+                guard !instance.readOnly else { return }
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
-                storage.keyPath = wrapppedKeyPath
-                storage.value = newValue
+                storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                try! storage.withMutation {
+                    storage.value = newValue
+                }
             }
         }
     }
@@ -100,7 +86,8 @@ extension ObjectStore.Object.Objects: Mergeable {
     public func merge(other: Mergeable) throws {
         guard let other = other as? Self else { return }
         if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
-            change {
+            try withMutation {
+                changed = otherChanged
                 _ids = other._ids
                 _value = nil
             }
@@ -130,4 +117,3 @@ extension ObjectStore.Object.Objects: DecodableProperty {
         }
     }
 }
-

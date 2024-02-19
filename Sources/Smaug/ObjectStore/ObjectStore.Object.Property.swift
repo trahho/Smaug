@@ -55,7 +55,7 @@ public extension ObjectStore.Object {
 //        func merge(instance _: ObjectStore.Object, other _: ObjectProperty) throws {}
     }
 
-    @propertyWrapper final class Property<Enclosing, Value>: Mergeable where Enclosing: ObjectStore.Object, Value: Codable {
+    @propertyWrapper final class Property<Value>: PropertyStorage, Mergeable where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
             get { fatalError() }
@@ -64,6 +64,7 @@ public extension ObjectStore.Object {
 
         private var _value: Value?
         private var changed: Date?
+        weak var instance: ObjectStore.Object?
 
         private func value<U>(_: U.Type) -> U? where U: ExpressibleByNilLiteral {
             _value as? U
@@ -77,51 +78,38 @@ public extension ObjectStore.Object {
             _value = wrappedValue()
         }
 
-        public static subscript(_enclosingInstance instance: Enclosing,
-                                wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Value>,
-                                storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value
+        public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
+                                           wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Value>,
+                                           storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value where Enclosing: ObjectStore.Object
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
-                storage.keyPath = wrappedKeyPath
-                instance._$observationRegistrar.access(instance, keyPath: wrappedKeyPath)
+                storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                storage.showAccess()
                 return storage.value(Value.self)
             }
             set {
+                guard !instance.readOnly else { return }
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
-                storage.keyPath = wrappedKeyPath
-                storage.change {
+                storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                try! storage.withMutation {
                     storage._value = newValue
                     storage.changed = instance.writingTimestamp
                 }
             }
         }
 
-        private weak var instance: Enclosing?
-        private var keyPath: ReferenceWritableKeyPath<Enclosing, Value>?
-
-        func change(by action: () -> ()) {
-            guard let instance, let keyPath else {
-                action()
-                return
-            }
-
-            instance.objectWillChange.send()
-            instance._$observationRegistrar.withMutation(of: instance, keyPath: keyPath) {
-                action()
-            }
-            instance.store?.objectDidChange.send()
-        }
+    
 
         public func merge(other: Mergeable) throws {
             guard let other = other as? Self else { return }
             if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
-                change {
+                try withMutation {
                     changed = otherChanged
                     if let ownValue = _value as? Mergeable, let otherValue = other._value as? Mergeable {
-                        try! ownValue.merge(other: otherValue)
+                        try ownValue.merge(other: otherValue)
                     } else {
                         _value = other._value
                     }

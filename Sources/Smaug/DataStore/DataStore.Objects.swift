@@ -9,7 +9,7 @@ import Foundation
 
 public extension DataStore {
     @propertyWrapper
-    final class Objects<Enclosing, T>: ObjectsStorageBase<Enclosing, T> where Enclosing: DataStore, T: Object {
+    final class Objects<T>: ObjectsStorageBase<T> where T: Object {
         override var value: Set<T> {
             super.value.filter { $0.added! <= store.document.readingTimestamp }.asSet
         }
@@ -20,13 +20,19 @@ public extension DataStore {
             set { fatalError() }
         }
 
-        public static subscript(_enclosingInstance instance: Enclosing,
-                                wrapped _: ReferenceWritableKeyPath<Enclosing, Set<T>>,
-                                storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Objects>) -> Set<T>
+        public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
+                                wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Set<T>>,
+                                           storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Objects>) -> Set<T> where Enclosing : DataStore
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
+                storage.withMutation = { action in
+                    instance.objectWillChange.send()
+                    instance._$observationRegistrar.withMutation(of: instance, keyPath: wrappedKeyPath, action)
+                    instance.objectDidChange.send()
+                }
+                instance._$observationRegistrar.access(instance, keyPath: wrappedKeyPath)
                 return storage.value
             }
             set {}

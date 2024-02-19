@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Observation
 
 extension DatabaseDocument {
     enum Failure: Error {
@@ -24,8 +25,9 @@ extension DatabaseDocument {
 }
 
 @dynamicMemberLookup
-open class DatabaseDocument: Reflectable, ObservableObject {
+open class DatabaseDocument: Reflectable, ObservableObject, Observable {
     public private(set) var containerDocument: DatabaseDocument?
+    internal let _$observationRegistrar = Observation.ObservationRegistrar()
     
     // MARK: - Initialization
     

@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension Set {
+public extension Set {
     var asArray: [Element] {
         Array(self)
     }

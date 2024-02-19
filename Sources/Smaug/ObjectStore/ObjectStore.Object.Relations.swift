@@ -92,18 +92,23 @@ public extension ObjectStore.Object {
         }
 
         public static subscript(_enclosingInstance instance: Enclosing,
-                                wrapped _: ReferenceWritableKeyPath<Enclosing, Set<Value>>,
+                                wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Set<Value>>,
                                 storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Relations>) -> Set<Value>
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
+                storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                storage.showAccess()
                 return storage.value
             }
             set {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
-                storage.value = newValue
+                storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                try! storage.withMutation {
+                    storage.value = newValue
+                }
             }
         }
     }
