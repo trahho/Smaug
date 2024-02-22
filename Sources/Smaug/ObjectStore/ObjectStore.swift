@@ -82,12 +82,19 @@ open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, Content
         guard let storage = storage(type: T.self) else { throw DatabaseDocument.Failure.typeNotFound }
         guard storage.getObject(id: item.id) == nil else { return }
 
-        objectWillChange.send()
+//        objectWillChange.send()
         storage.addObject(item: item)
         item.added = writingTimestamp
         item.store = self
         item.adopt(document: document)
-        objectDidChange.send()
+//        objectDidChange.send()
+    }
+    
+    func deleteObject<T>(item: T) throws where T: ObjectStore.Object {
+        guard let storage = storage(type: T.self) else { throw DatabaseDocument.Failure.typeNotFound }
+        guard storage.getObject(id: item.id) == item else { return }
+
+        storage.deleteObject(item: item)
     }
 
     // MARK: - Access

@@ -55,6 +55,50 @@ public extension ObjectStore.Object {
 //        func merge(instance _: ObjectStore.Object, other _: ObjectProperty) throws {}
     }
 
+    @propertyWrapper final class RuntimeProperty<Value>: PropertyStorage {
+        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
+        public var wrappedValue: Value {
+            get { fatalError() }
+            set { fatalError() }
+        }
+
+        private var _value: Value?
+        weak var instance: ObjectStore.Object?
+
+        private func value<U>(_: U.Type) -> U? where U: ExpressibleByNilLiteral {
+            _value as? U
+        }
+
+        private func value<U>(_: U.Type) -> U {
+            _value as! U
+        }
+
+        public init(wrappedValue: @autoclosure @escaping () -> Value) {
+            _value = wrappedValue()
+        }
+
+        public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
+                                           wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Value>,
+                                           storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, RuntimeProperty>) -> Value where Enclosing: ObjectStore.Object
+        {
+            get {
+                let storage = instance[keyPath: storageKeyPath]
+                storage.instance = instance
+                storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                storage.showAccess()
+                return storage.value(Value.self)
+            }
+            set {
+                let storage = instance[keyPath: storageKeyPath]
+                storage.instance = instance
+                storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                try! storage.withMutation {
+                    storage._value = newValue
+                }
+            }
+        }
+    }
+
     @propertyWrapper final class Property<Value>: PropertyStorage, Mergeable where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
@@ -100,8 +144,6 @@ public extension ObjectStore.Object {
                 }
             }
         }
-
-    
 
         public func merge(other: Mergeable) throws {
             guard let other = other as? Self else { return }

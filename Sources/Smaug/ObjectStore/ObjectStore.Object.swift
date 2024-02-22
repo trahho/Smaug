@@ -61,6 +61,10 @@ extension ObjectStore {
             store![type, name]
         }
         
+        public func delete() {
+            try! store!.deleteObject(item: self)
+        }
+        
         open func merge(other: Mergeable) throws {
             guard let other = other as? Self, other.id == id else { return }
 

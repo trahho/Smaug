@@ -24,12 +24,8 @@ public extension ObjectStore {
             get {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
-                storage.withMutation = { action in
-                    instance.objectWillChange.send()
-                    instance._$observationRegistrar.withMutation(of: instance, keyPath: wrappedKeyPath, action)
-                    instance.objectDidChange.send()
-                }
-                instance._$observationRegistrar.access(instance, keyPath: wrappedKeyPath)
+                storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                storage.showAccess()
                 return storage.value
             }
             set {}
