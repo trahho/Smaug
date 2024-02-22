@@ -8,7 +8,7 @@
 import Combine
 import Foundation
 
-public class PersistentContainer<Content: PersistentContent>: ObservableObject {
+public class PersistentContainer<Content: PersistentContent> /*: ObservableObject */ {
     typealias ContentDelegate = () -> Void
 
     private let timestampStringLenght = 30
@@ -30,7 +30,7 @@ public class PersistentContainer<Content: PersistentContent>: ObservableObject {
     private var _content: Content?
 
     fileprivate func setContent(_ newValue: Content) {
-        objectWillChange.send()
+//        objectWillChange.send()
         _content = newValue
         if _content != nil {
             if let contentChange {
@@ -74,7 +74,7 @@ public class PersistentContainer<Content: PersistentContent>: ObservableObject {
         if let content = _content as? (any ObservableObject), let publisher = (content.objectWillChange as any Publisher) as? (ObservableObjectPublisher) {
             willChangeSubscriber = publisher
                 .sink { [self] in
-                    self.objectWillChange.send()
+//                    self.objectWillChange.send()
                     hasChanges = true
                 }
         } else {

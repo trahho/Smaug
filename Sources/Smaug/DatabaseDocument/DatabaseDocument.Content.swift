@@ -35,11 +35,11 @@ public extension DatabaseDocument {
             container = PersistentContainer(url: url, content: content, commitOnChange: commitOnChange)
 //            container = PersistentContainer(url: url, content: content, commitOnChange: commitOnChange)
 //            container.contentChange = { self.container.content.document = self.document }
-            if publishChange {
-                cancellable = container.objectWillChange.sink {
-                    self.document.objectWillChange.send()
-                }
-            }
+//            if publishChange {
+//                cancellable = container.objectWillChange.sink {
+//                    self.document.objectWillChange.send()
+//                }
+//            }
         }
         
         override func start() {

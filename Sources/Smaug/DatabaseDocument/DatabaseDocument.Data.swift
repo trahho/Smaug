@@ -37,9 +37,9 @@ public extension DatabaseDocument {
             staticContent.document = document
             let url = url.appending(component: name + ".data")
             container = ObjectStore.Container(document: document, url: url, content: T(), commitOnChange: commitOnChange)
-            if publishChange {
-                cancellable = container!.objectWillChange.sink { document.objectWillChange.send() }
-            }
+//            if publishChange {
+//                cancellable = container!.objectWillChange.sink { document.objectWillChange.send() }
+//            }
         }
 
         override func start() {

@@ -67,11 +67,11 @@ public extension ObjectStore.Object {
             set {
                 guard newValue != _instance else { return }
                 _instance = newValue
-                cancellable = _instance!.objectWillChange.sink { [self] in
-                    if instance.store?.document != nil {
-                        _value = nil
-                    }
-                }
+//                cancellable = _instance!.objectWillChange.sink { [self] in
+//                    if instance.store?.document != nil {
+//                        _value = nil
+//                    }
+//                }
             }
         }
 

@@ -8,7 +8,7 @@
 import Foundation
 import Observation
 
-open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContainer, ObservableObject, Observable, Reflectable {
+open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContainer, ObservationInstance, Reflectable {
     // MARK: - Types
 
     public typealias PersistentValue = Codable & Equatable
@@ -28,21 +28,13 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
     // MARK: - Enclosing
 
     public var objectDidChange: ObjectDidChangePublisher = .init()
-    let _$observationRegistrar = Observation.ObservationRegistrar()
+    public let observationRegistrar = Observation.ObservationRegistrar()
 
     // MARK: - Initialisation
 
     public required init() {}
 
     // MARK: - Persistence
-
-    func willChange() {
-        objectWillChange.send()
-    }
-
-    func didChange() {
-        objectDidChange.send()
-    }
 
     public func restore() {
         let mirror = mirror(for: ObjectsStorage.self)

@@ -10,7 +10,7 @@ import Foundation
 import Observation
 
 extension ObjectStore {
-    open class Object: Identifiable, Hashable, ObservableObject, Reflectable, Mergeable, Observable {
+    open class Object: Identifiable, Hashable, Reflectable, Mergeable, ObservationInstance {
         public typealias ID = UUID
 
         public private(set) var id: ID = UUID()
@@ -29,7 +29,11 @@ extension ObjectStore {
 
         var added: Date?
 
-        let _$observationRegistrar = Observation.ObservationRegistrar()
+        public let observationRegistrar = Observation.ObservationRegistrar()
+        
+        public func didChange() {
+            store?.didChange()
+        }
 
         var readOnly: Bool {
             guard let document = store?.document else { return false }

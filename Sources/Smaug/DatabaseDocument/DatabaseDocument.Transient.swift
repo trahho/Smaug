@@ -27,9 +27,9 @@ public extension DatabaseDocument {
             self.document = document
             content = T()
             content.document = document
-            if publishChange {
-                cancellable = content.objectWillChange.sink { document.objectWillChange.send() }
-            }
+//            if publishChange {
+//                cancellable = content.objectWillChange.sink { document.objectWillChange.send() }
+//            }
         }
 
         // MARK: - Storage

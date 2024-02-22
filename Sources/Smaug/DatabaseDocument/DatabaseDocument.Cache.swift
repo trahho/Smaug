@@ -53,9 +53,9 @@ public extension DatabaseDocument {
                 let url = url.appending(component: name)
                 let document = T(url: url, containerDocument: parent)
                 var cancellable: AnyCancellable?
-                if publishChange {
-                    cancellable = document.objectWillChange.sink(receiveValue: { [self] in parent.objectWillChange.send() })
-                }
+//                if publishChange {
+//                    cancellable = document.objectWillChange.sink(receiveValue: { [self] in parent.objectWillChange.send() })
+//                }
                 cache[name] = CacheItem(document: document, cancellable: cancellable)
                 return document
             }

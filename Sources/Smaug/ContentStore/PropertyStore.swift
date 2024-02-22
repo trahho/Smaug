@@ -6,36 +6,28 @@
 //
 
 import Foundation
+import Observation
 
-open class PropertyStore: PersistentContent, ContentContainer, ObservableObject, Reflectable {
+open class PropertyStore: PersistentContent, ContentContainer, ObservationInstance, Reflectable {
+
     // MARK: - Types
 
     public typealias PersistentValue = Codable & Equatable
 
-    public internal(set) var document: DatabaseDocument!
-    {
+    public internal(set) var document: DatabaseDocument! {
         didSet {
-            print ("Document set for \(self.typeName)")
+            print("Document set for \(typeName)")
         }
     }
 
     // MARK: - Enclosing
 
     public var objectDidChange: ObjectDidChangePublisher = .init()
+    public let observationRegistrar = ObservationRegistrar()
 
     // MARK: - Initialisation
 
     public required init() {}
-
-    // MARK: - Persistence
-
-    func willChange() {
-        objectWillChange.send()
-    }
-
-    func didChange() {
-        objectDidChange.send()
-    }
 
     // MARK: - Access
 
@@ -82,7 +74,7 @@ extension PropertyStore: Persistent {
     }
 }
 
-//extension DatabaseDocument {
+// extension DatabaseDocument {
 //    @propertyWrapper
 //    final class Projected<Value> {
 //        var keyPath: ReferenceWritableKeyPath<PropertyStore, Value>
@@ -111,4 +103,4 @@ extension PropertyStore: Persistent {
 //            }
 //        }
 //    }
-//}
+// }

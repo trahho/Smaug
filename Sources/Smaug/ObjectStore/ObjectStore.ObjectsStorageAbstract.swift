@@ -13,19 +13,17 @@ public extension ObjectStore {
         var value: Set<T> { fatalError() }
         var deletedTimestamp: Date?
         
-        var withMutation: ((() throws -> ()) throws -> ()) = { action in try action() }
-        var showAccess: (() -> ()) = {}
         
-        func configureObservation<Enclosing>(instance: Enclosing, keyPath: ReferenceWritableKeyPath<Enclosing, Set<T>>) where Enclosing: ObjectStore {
-            withMutation = { action in
-                instance.objectWillChange.send()
-                try instance._$observationRegistrar.withMutation(of: instance, keyPath: keyPath, action)
-                instance.objectDidChange.send()
-            }
-            showAccess = {
-                instance._$observationRegistrar.access(instance, keyPath: keyPath)
-            }
-        }
+//        func configureObservation<Enclosing>(instance: Enclosing, keyPath: ReferenceWritableKeyPath<Enclosing, Set<T>>) where Enclosing: ObjectStore {
+//            withMutation = { action in
+//                instance.objectWillChange.send()
+//                try instance._$observationRegistrar.withMutation(of: instance, keyPath: keyPath, action)
+//                instance.objectDidChange.send()
+//            }
+//            showAccess = {
+//                instance._$observationRegistrar.access(instance, keyPath: keyPath)
+//            }
+//        }
         
         func getObject(id: T.ID) -> T? { fatalError() }
         

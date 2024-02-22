@@ -25,9 +25,9 @@ extension DatabaseDocument {
 }
 
 @dynamicMemberLookup
-open class DatabaseDocument: Reflectable, ObservableObject, Observable {
+open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInstance {
     public private(set) var containerDocument: DatabaseDocument?
-    internal let _$observationRegistrar = Observation.ObservationRegistrar()
+    public let observationRegistrar = Observation.ObservationRegistrar()
     
     // MARK: - Initialization
     

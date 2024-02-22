@@ -36,11 +36,11 @@ public extension DatabaseDocument {
             content.document = document
             let url = url.appending(component: name + ".properties")
             container = PropertyStore.Container(document: document, url: url, content: content, commitOnChange: commitOnChange)
-            if publishChange {
-                cancellable = container.objectWillChange.sink { 
-                    document.objectWillChange.send()
-                }
-            }
+//            if publishChange {
+//                cancellable = container.objectWillChange.sink { 
+//                    document.objectWillChange.send()
+//                }
+//            }
         }
         
         override func start() {
