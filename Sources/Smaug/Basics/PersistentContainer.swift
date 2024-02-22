@@ -8,7 +8,7 @@
 import Combine
 import Foundation
 
-public class PersistentContainer<Content: Persistent>: ObservableObject {
+public class PersistentContainer<Content: PersistentContent>: ObservableObject {
     typealias ContentDelegate = () -> Void
 
     private let timestampStringLenght = 30

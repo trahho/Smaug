@@ -15,9 +15,6 @@ public extension PropertyStore {
             set { fatalError() }
         }
 
-        var key: String?
-        var alternateKey: String?
-
         private var _value: Value?
 
         private func value<U>(_: U.Type) -> U? where U: ExpressibleByNilLiteral {
@@ -28,23 +25,15 @@ public extension PropertyStore {
             _value as! U
         }
 
-        public init(wrappedValue: @autoclosure @escaping () -> Value, _ key: String? = nil, alternateKey: String? = nil) {
-            self.key = key
-            self.alternateKey = alternateKey
+        public init(wrappedValue: @autoclosure @escaping () -> Value) {
             _value = wrappedValue()
-        }
-
-        public init(_ key: String? = nil, alternateKey: String? = nil) {
-            self.key = key
-            self.alternateKey = alternateKey
-            _value = nil
         }
 
         public init() {}
 
         public static subscript<Enclosing: PropertyStore>(_enclosingInstance instance: Enclosing,
-                                                         wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
-                                                         storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value
+                                                          wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
+                                                          storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Property>) -> Value
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
@@ -52,7 +41,7 @@ public extension PropertyStore {
             }
             set {
                 let storage = instance[keyPath: storageKeyPath]
-                print ("Contentstore.Property will change")
+                print("Contentstore.Property will change")
                 instance.objectWillChange.send()
                 storage._value = newValue
                 instance.objectDidChange.send()
@@ -61,25 +50,12 @@ public extension PropertyStore {
     }
 }
 
-extension PropertyStore.Property: EncodableProperty {
-    public func encodeValue(from container: inout EncodeContainer, propertyName: String) throws {
-        guard let _value else { return }
-        let codingKey = SerializedCodingKeys(key: key ?? propertyName)
-        try container.encodeIfPresent(_value, forKey: codingKey)
+extension PropertyStore.Property: PersistentProperty {
+    func encode(into container: inout EncodingContainer, key: PersistentCodingKey) throws {
+        try container.encodeIfPresent(_value, forKey: key)
     }
-}
 
-extension PropertyStore.Property: DecodableProperty {
-    public func decodeValue(from container: DecodeContainer, propertyName: String) throws {
-        let codingKey = SerializedCodingKeys(key: key ?? propertyName)
-        if let value = try? container.decodeIfPresent(Value.self, forKey: codingKey) {
-            _value = value
-        } else {
-            guard let altKey = alternateKey else { return }
-            let altCodingKey = SerializedCodingKeys(key: altKey)
-            if let value = try? container.decodeIfPresent(Value.self, forKey: altCodingKey) {
-                _value = value
-            }
-        }
+    func decode(from container: DecodingContainer, key: PersistentCodingKey) throws {
+        _value = try? container.decodeIfPresent(Value.self, forKey: key)
     }
 }

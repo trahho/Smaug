@@ -101,25 +101,21 @@ extension ObjectStore.Object.Object: Mergeable {
     }
 }
 
-extension ObjectStore.Object.Object: EncodableProperty {
-    struct Coded: Codable {
-        var value: Value.ID?
-        var changed: Date
-    }
-
-    public func encodeValue(from container: inout EncodeContainer, propertyName: String) throws {
+extension ObjectStore.Object.Object: PersistentProperty {
+    func encode(into container: inout EncodingContainer, key: PersistentCodingKey) throws {
         guard let changed else { return }
-        let codingKey = SerializedCodingKeys(key: propertyName)
-        try container.encodeIfPresent(Coded(value: _id, changed: changed), forKey: codingKey)
+        try container.encodeIfPresent(Coded(value: _id, changed: changed), forKey: key)
     }
-}
 
-extension ObjectStore.Object.Object: DecodableProperty {
-    public func decodeValue(from container: DecodeContainer, propertyName: String) throws {
-        let codingKey = SerializedCodingKeys(key: propertyName)
-        if let coded = try? container.decodeIfPresent(Coded.self, forKey: codingKey) {
+    func decode(from container: DecodingContainer, key: PersistentCodingKey) throws {
+        if let coded = try? container.decodeIfPresent(Coded.self, forKey: key) {
             _id = coded.value
             changed = coded.changed
         }
+    }
+
+    struct Coded: Codable {
+        var value: Value.ID?
+        var changed: Date
     }
 }

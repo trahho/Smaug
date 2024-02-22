@@ -7,19 +7,21 @@
 
 import Foundation
 
-protocol Reflectable {
-    func mirror<T>(for _: T.Type) -> [(label: String?, value: T)]
+public protocol Reflectable {
+    typealias Item<Value> = (label: String, value: Value)
+
+    func mirror<T>(for _: T.Type) -> [Item<T>]
 }
 
 extension Reflectable {
-    func mirror<T>(for _: T.Type) -> [(label: String?, value: T)] {
-        var result: [(label: String?, value: T)] = []
+    public func mirror<T>(for _: T.Type) -> [Item<T>] {
+        var result: [Item<T>] = []
         var mirror: Mirror? = Mirror(reflecting: self)
         repeat {
             guard let children = mirror?.children else { break }
             for child in children {
                 if let value = child.value as? T {
-                    result.append((label: child.label, value: value))
+                    result.append((label: String((child.label ?? "").dropFirst()), value: value))
                 }
             }
             mirror = mirror?.superclassMirror

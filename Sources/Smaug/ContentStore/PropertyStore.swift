@@ -7,7 +7,7 @@
 
 import Foundation
 
-open class PropertyStore: Persistent, Serializable, ContentContainer, ObservableObject, Reflectable {
+open class PropertyStore: PersistentContent, ContentContainer, ObservableObject, Reflectable {
     // MARK: - Types
 
     public typealias PersistentValue = Codable & Equatable
@@ -62,33 +62,53 @@ open class PropertyStore: Persistent, Serializable, ContentContainer, Observable
     }
 }
 
-extension DatabaseDocument {
-    @propertyWrapper
-    final class Projected<Value> {
-        var keyPath: ReferenceWritableKeyPath<PropertyStore, Value>
+extension PropertyStore: Persistent {
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: PersistentCodingKey.self)
 
-        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-        public var wrappedValue: Value {
-            get { fatalError() }
-            set { fatalError() }
-        }
-
-        init(_ keyPath: ReferenceWritableKeyPath<PropertyStore, Value>) {
-            self.keyPath = keyPath
-        }
-
-        public static subscript<Enclosing: PropertyStore>(_enclosingInstance instance: Enclosing,
-                                                         wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
-                                                         storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Projected>) -> Value
-        {
-            get {
-                let storage = instance[keyPath: storageKeyPath]
-                return instance[keyPath: storage.keyPath]
+        try mirror(for: PersistentProperty.self)
+            .forEach { (label: String, value: PersistentProperty) in
+                try value.encode(into: &container, key: PersistentCodingKey(key: label))
             }
-            set {
-                let storage = instance[keyPath: storageKeyPath]
-                instance[keyPath: storage.keyPath] = newValue
+    }
+
+    public func decode(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: PersistentCodingKey.self)
+
+        try mirror(for: PersistentProperty.self)
+            .forEach { (label: String, value: PersistentProperty) in
+                try value.decode(from: container, key: PersistentCodingKey(key: label))
             }
-        }
     }
 }
+
+//extension DatabaseDocument {
+//    @propertyWrapper
+//    final class Projected<Value> {
+//        var keyPath: ReferenceWritableKeyPath<PropertyStore, Value>
+//
+//        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
+//        public var wrappedValue: Value {
+//            get { fatalError() }
+//            set { fatalError() }
+//        }
+//
+//        init(_ keyPath: ReferenceWritableKeyPath<PropertyStore, Value>) {
+//            self.keyPath = keyPath
+//        }
+//
+//        public static subscript<Enclosing: PropertyStore>(_enclosingInstance instance: Enclosing,
+//                                                         wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
+//                                                         storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Projected>) -> Value
+//        {
+//            get {
+//                let storage = instance[keyPath: storageKeyPath]
+//                return instance[keyPath: storage.keyPath]
+//            }
+//            set {
+//                let storage = instance[keyPath: storageKeyPath]
+//                instance[keyPath: storage.keyPath] = newValue
+//            }
+//        }
+//    }
+//}

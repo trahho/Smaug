@@ -2,7 +2,7 @@
 //  File.swift
 //
 //
-//  Created by Guido Kühn on 06.05.23.
+//  Created by Guido Kühn on 22.02.24.
 //
 
 import Foundation
@@ -24,9 +24,5 @@ public extension ObjectStore.Object {
         }
 
         public init() {}
-    }
-
-    class ReferenceStorage: PropertyStorage {
-        func adopt(document _: DatabaseDocument) {}
     }
 }

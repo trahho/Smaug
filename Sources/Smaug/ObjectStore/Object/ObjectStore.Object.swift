@@ -10,24 +10,34 @@ import Foundation
 import Observation
 
 extension ObjectStore {
-    open class Object: PersistentObject, ObservableObject, Reflectable, Mergeable, Observable {
+    open class Object: Identifiable, Hashable, ObservableObject, Reflectable, Mergeable, Observable {
+        public typealias ID = UUID
+
+        public private(set) var id: ID = UUID()
+
+        public static func == (lhs: ObjectStore.Object, rhs: ObjectStore.Object) -> Bool {
+            lhs.id == rhs.id
+        }
+
+        public func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+
         var store: ObjectStore?
 //        var document: DatabaseDocument? { store?.document }
         public internal(set) var isStatic = false
-        
+
         var added: Date?
-        
-        internal let _$observationRegistrar = Observation.ObservationRegistrar()
+
+        let _$observationRegistrar = Observation.ObservationRegistrar()
 
         var readOnly: Bool {
             guard let document = store?.document else { return false }
             return document.readOnly || (!document.inSetup && isStatic)
         }
-        
-        required public init() {
-            
-        }
-        
+
+        public required init() {}
+
         // MARK: - Timing
 
         var readingTimestamp: Date { store?.readingTimestamp ?? Date.distantFuture }
@@ -60,16 +70,16 @@ extension ObjectStore {
         public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
             store![type, name]
         }
-        
+
         public func delete() {
             try! store!.deleteObject(item: self)
         }
-        
+
         open func merge(other: Mergeable) throws {
             guard let other = other as? Self, other.id == id else { return }
 
             if let added, let otherAdded = other.added, otherAdded < added { self.added = other.added }
-            
+
             for (own, other) in zip(mirror(for: Mergeable.self), other.mirror(for: Mergeable.self)) {
                 try own.value.merge(other: other.value)
             }
@@ -77,3 +87,26 @@ extension ObjectStore {
     }
 }
 
+extension ObjectStore.Object: Persistent {
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: PersistentCodingKey.self)
+
+        try container.encode(id, forKey: PersistentCodingKey(key: "ID"))
+        
+        try mirror(for: PersistentProperty.self)
+            .forEach { (label: String, value: PersistentProperty) in
+                try value.encode(into: &container, key: PersistentCodingKey(key: label))
+            }
+    }
+
+    public func decode(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: PersistentCodingKey.self)
+
+        try id = container.decode(ID.self, forKey: PersistentCodingKey(key: "ID"))
+        
+        try mirror(for: PersistentProperty.self)
+            .forEach { (label: String, value: PersistentProperty) in
+                try value.decode(from: container, key: PersistentCodingKey(key: label))
+            }
+    }
+}

@@ -8,7 +8,7 @@
 import Foundation
 import Observation
 
-open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, ContentContainer, ObservableObject, Observable,  Reflectable {
+open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContainer, ObservableObject, Observable, Reflectable {
     // MARK: - Types
 
     public typealias PersistentValue = Codable & Equatable
@@ -19,18 +19,16 @@ open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, Content
     }
 
     public internal(set) var document: DatabaseDocument!
-    
+
     // MARK: - Timing
 
     var readingTimestamp: Date { document?.readingTimestamp ?? Date.distantFuture }
     var writingTimestamp: Date { document?.writingTimestamp ?? Date.distantPast }
 
-
     // MARK: - Enclosing
 
     public var objectDidChange: ObjectDidChangePublisher = .init()
-    internal let _$observationRegistrar = Observation.ObservationRegistrar()
-
+    let _$observationRegistrar = Observation.ObservationRegistrar()
 
     // MARK: - Initialisation
 
@@ -89,7 +87,7 @@ open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, Content
         item.adopt(document: document)
 //        objectDidChange.send()
     }
-    
+
     func deleteObject<T>(item: T) throws where T: ObjectStore.Object {
         guard let storage = storage(type: T.self) else { throw DatabaseDocument.Failure.typeNotFound }
         guard storage.getObject(id: item.id) == item else { return }
@@ -110,7 +108,7 @@ open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, Content
     public func add<T>(_ item: T) where T: ObjectStore.Object {
         document.add(item)
     }
-    
+
     public func create<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
         let object = T()
         add(object)
@@ -119,5 +117,25 @@ open class ObjectStore: Persistent, Serializable, Restorable, Mergeable, Content
 
     public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
         document[type, name]
+    }
+}
+
+extension ObjectStore: Persistent {
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: PersistentCodingKey.self)
+
+        try mirror(for: PersistentProperty.self)
+            .forEach { (label: String, value: PersistentProperty) in
+                try value.encode(into: &container, key: PersistentCodingKey(key: label))
+            }
+    }
+
+    public func decode(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: PersistentCodingKey.self)
+
+        try mirror(for: PersistentProperty.self)
+            .forEach { (label: String, value: PersistentProperty) in
+                try value.decode(from: container, key: PersistentCodingKey(key: label))
+            }
     }
 }

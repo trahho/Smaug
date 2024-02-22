@@ -35,8 +35,7 @@ open class DatabaseDocument: Reflectable, ObservableObject, Observable {
         self.containerDocument = containerDocument
         let storages = mirror(for: Storage.self)
         storages.forEach {
-            let name = String($0.label!.dropFirst())
-            $0.value.setup(url: url, name: name, document: self)
+            $0.value.setup(url: url, name: $0.label, document: self)
         }
         
         inSetup = true

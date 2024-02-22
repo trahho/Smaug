@@ -11,7 +11,7 @@ import Foundation
 public extension DatabaseDocument {
 
     @propertyWrapper
-    final class Content<T>: Storage where T: Persistent {
+    final class Content<T>: Storage where T: PersistentContent {
         // MARK: - Initialization
 
         public init(wrappedValue: @autoclosure @escaping () -> T, publishChange: Bool = true, commitOnChange: Bool = true) {
