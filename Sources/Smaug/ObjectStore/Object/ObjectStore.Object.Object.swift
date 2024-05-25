@@ -83,6 +83,7 @@ public extension ObjectStore.Object {
                 try! storage.withMutation {
                     storage.value = newValue
                 }
+                instance.store?.objectDidChange.send()
             }
         }
     }

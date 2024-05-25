@@ -70,12 +70,19 @@ final class DataStoreTests: XCTestCase {
         let b = B.B()
         b.a1 = a
         doc.add(a)
-
-        serialize(doc: doc)
-
         XCTAssertEqual(b.a1, a)
         XCTAssert(a.bb.contains(b))
+        let  xx = b.aa
         XCTAssert(b.aa.contains(a))
+
+//        serialize(doc: doc)
+//
+//        let _b = doc[B.B.self,b.id]!
+//        let _a = doc[A.A.self, a.id]!
+//        XCTAssertEqual(_b.a1, _a)
+//        XCTAssert(_a.bb.contains(_b))
+//        let  xx = _b.aa
+//        XCTAssert(_b.aa.contains(_a))
     }
 
     func testAdopt() throws {

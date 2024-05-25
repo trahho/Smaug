@@ -13,7 +13,7 @@ extension ObjectStore {
     open class Object: Identifiable, Hashable, Reflectable, Mergeable, ObservationInstance {
         public typealias ID = UUID
 
-        public private(set) var id: ID = UUID()
+        public internal(set) var id: ID = UUID()
 
         public static func == (lhs: ObjectStore.Object, rhs: ObjectStore.Object) -> Bool {
             lhs.id == rhs.id
@@ -30,10 +30,6 @@ extension ObjectStore {
         var added: Date?
 
         public let observationRegistrar = Observation.ObservationRegistrar()
-        
-        public func didChange() {
-            store?.didChange()
-        }
 
         var readOnly: Bool {
             guard let document = store?.document else { return false }
@@ -41,11 +37,15 @@ extension ObjectStore {
         }
 
         public required init() {}
+        
+        public init(id: ID){
+            self.id = id
+        }
 
         // MARK: - Timing
 
-        var readingTimestamp: Date { store?.readingTimestamp ?? Date.distantFuture }
-        var writingTimestamp: Date { store?.writingTimestamp ?? Date.distantPast }
+        public var readingTimestamp: Date { store?.readingTimestamp ?? Date.distantFuture }
+        public var writingTimestamp: Date { store?.writingTimestamp ?? Date.distantPast }
 
         func adopt(document: DatabaseDocument) {
             mirror(for: ReferenceStorage.self).map {
@@ -96,7 +96,7 @@ extension ObjectStore.Object: Persistent {
         var container = encoder.container(keyedBy: PersistentCodingKey.self)
 
         try container.encode(id, forKey: PersistentCodingKey(key: "ID"))
-        
+
         try mirror(for: PersistentProperty.self)
             .forEach { (label: String, value: PersistentProperty) in
                 try value.encode(into: &container, key: PersistentCodingKey(key: label))
@@ -107,7 +107,7 @@ extension ObjectStore.Object: Persistent {
         let container = try decoder.container(keyedBy: PersistentCodingKey.self)
 
         try id = container.decode(ID.self, forKey: PersistentCodingKey(key: "ID"))
-        
+
         try mirror(for: PersistentProperty.self)
             .forEach { (label: String, value: PersistentProperty) in
                 try value.decode(from: container, key: PersistentCodingKey(key: label))

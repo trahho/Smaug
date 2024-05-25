@@ -8,7 +8,7 @@
 import Foundation
 
 public extension DatabaseDocument {
-    class Storage: ObservationPropertyStorage {
+    class Storage: ObservationPropertyWrapper {
         var document: DatabaseDocument!
 
         func setup(url: URL, name: String, document: DatabaseDocument) {}

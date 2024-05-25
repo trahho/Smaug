@@ -8,7 +8,7 @@
 import Foundation
 
 public extension PropertyStore {
-    @propertyWrapper final class Property<Value>: ObservationPropertyStorage where Value: Codable {
+    @propertyWrapper final class Property<Value>: ObservationPropertyWrapper where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
             get { fatalError() }
@@ -44,8 +44,8 @@ public extension PropertyStore {
                 storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
                 try! storage.withMutation {
                     storage._value = newValue
-                    instance.objectDidChange.send()
                 }
+                instance.objectDidChange.send()
             }
         }
     }

@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension Encodable {
+public extension Encodable {
     private func getType<T: Encodable>(_: T) -> Any.Type {
         T.self
     }

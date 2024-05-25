@@ -8,7 +8,7 @@
 import Foundation
 
 public extension ObjectStore.Object {
-    @propertyWrapper final class Property<Value>: ObservationPropertyStorage, Mergeable where Value: Codable {
+    @propertyWrapper final class Property<Value>: ObservationPropertyWrapper, Mergeable where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
             get { fatalError() }
@@ -51,6 +51,7 @@ public extension ObjectStore.Object {
                     storage._value = newValue
                     storage.changed = instance.writingTimestamp
                 }
+                instance.store?.objectDidChange.send()
             }
         }
 

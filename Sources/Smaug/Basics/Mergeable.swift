@@ -8,7 +8,7 @@
 import Foundation
 
 public protocol Mergeable {
-    func merge(other: any Mergeable) throws
+    mutating func merge(other: any Mergeable) throws
 }
 
 public extension Mergeable {

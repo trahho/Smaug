@@ -22,8 +22,8 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
 
     // MARK: - Timing
 
-    var readingTimestamp: Date { document?.readingTimestamp ?? Date.distantFuture }
-    var writingTimestamp: Date { document?.writingTimestamp ?? Date.distantPast }
+    public var readingTimestamp: Date { document?.readingTimestamp ?? Date.distantFuture }
+    public var writingTimestamp: Date { document?.writingTimestamp ?? Date.distantPast }
 
     // MARK: - Enclosing
 
@@ -50,6 +50,7 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
             try own.value.merge(other: other.value)
             own.value.setStore(store: self)
         }
+        objectDidChange.send()
     }
 
     // MARK: - Storage
@@ -77,14 +78,14 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
         item.added = writingTimestamp
         item.store = self
         item.adopt(document: document)
-//        objectDidChange.send()
+        objectDidChange.send()
     }
 
     func deleteObject<T>(item: T) throws where T: ObjectStore.Object {
         guard let storage = storage(type: T.self) else { throw DatabaseDocument.Failure.typeNotFound }
         guard storage.getObject(id: item.id) == item else { return }
-
         storage.deleteObject(item: item)
+        objectDidChange.send()
     }
 
     // MARK: - Access

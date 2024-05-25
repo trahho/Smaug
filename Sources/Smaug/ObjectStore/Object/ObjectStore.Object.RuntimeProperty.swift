@@ -8,7 +8,7 @@
 import Foundation
 
 public extension ObjectStore.Object {
-    @propertyWrapper final class RuntimeProperty<Value>: ObservationPropertyStorage {
+    @propertyWrapper final class RuntimeProperty<Value>: ObservationPropertyWrapper {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
             get { fatalError() }

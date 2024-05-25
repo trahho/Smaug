@@ -8,7 +8,7 @@
 import Foundation
 
 public extension ObjectStore {
-    class ObjectsStorage: ObservationPropertyStorage, Mergeable {
+    class ObjectsStorage: ObservationPropertyWrapper, Mergeable {
         public func setStore(store: ObjectStore) {}
         public func merge(other: Mergeable) throws {}
         var store: ObjectStore!
