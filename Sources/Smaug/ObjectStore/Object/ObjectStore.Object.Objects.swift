@@ -11,18 +11,18 @@ import Foundation
 public extension ObjectStore.Object {
     @propertyWrapper final class Objects<Value>: ReferenceStorage where Value: ObjectStore.Object {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-        public var wrappedValue: Set<Value> {
+        public var wrappedValue: [Value] {
             get { fatalError() }
             set { fatalError() }
         }
 
         private var cancellable: AnyCancellable?
 
-        private var _ids: Set<Value.ID>?
-        private var _value: Set<Value>?
+        private var _ids: [Value.ID]?
+        private var _value: [Value]?
         private var changed: Date?
 
-        var value: Set<Value> {
+        var value: [Value] {
             get {
                 if let _value { return _value }
                 guard
@@ -30,12 +30,12 @@ public extension ObjectStore.Object {
                     let ids = _ids
                 else { return [] }
 
-                _value = ids.compactMap { database[Value.self, $0] }.asSet
+                _value = ids.compactMap { database[Value.self, $0] }
                 return _value!
             }
             set {
                 guard !instance.readOnly, value != newValue else { return }
-                _ids = newValue.map { $0.id }.asSet
+                _ids = newValue.map { $0.id }
                 _value = newValue
             }
         }
@@ -58,9 +58,11 @@ public extension ObjectStore.Object {
             if let _value { _value.forEach { document.add($0) }}
         }
 
+      
+
         public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
-                                           wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Set<Value>>,
-                                           storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Objects>) -> Set<Value> where Enclosing: ObjectStore.Object
+                                                   wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, [Value]>,
+                                           storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Objects>) -> [Value] where Enclosing: ObjectStore.Object
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
@@ -83,6 +85,7 @@ public extension ObjectStore.Object {
     }
 }
 
+
 extension ObjectStore.Object.Objects: Mergeable {
     public func merge(other: Mergeable) throws {
         guard let other = other as? Self else { return }
@@ -99,12 +102,12 @@ extension ObjectStore.Object.Objects: Mergeable {
 extension ObjectStore.Object.Objects: PersistentProperty {
     func encode(into container: inout EncodingContainer, key: PersistentCodingKey) throws {
         guard let changed else { return }
-        try container.encodeIfPresent(Coded(value: _ids?.asArray ?? [], changed: changed), forKey: key)
+        try container.encodeIfPresent(Coded(value: _ids ?? [], changed: changed), forKey: key)
     }
 
     func decode(from container: DecodingContainer, key: PersistentCodingKey) throws {
         if let coded = try? container.decodeIfPresent(Coded.self, forKey: key) {
-            _ids = coded.value.asSet
+            _ids = coded.value
             changed = coded.changed
         }
     }

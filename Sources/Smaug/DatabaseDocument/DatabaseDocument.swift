@@ -173,6 +173,10 @@ open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInst
         try! getObjects(type: type)
     }
     
+    public subscript<T, S>(_ type: T.Type, _ ids: S) -> Set<T> where T: ObjectStore.Object, S:Sequence, S.Element == T.ID {
+        ids.compactMap { try! getObject(type: type, id: $0) }.asSet
+    }
+    
     public subscript<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
         let object = T()
         add(object)

@@ -11,13 +11,13 @@ import Foundation
 public extension ObjectStore.Object {
     @propertyWrapper final class Relation<Enclosing, Value>: ReferenceStorage where Value: ObjectStore.Object, Enclosing: ObjectStore.Object {
         private var objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>?
-        private var objectsKeyPath: ReferenceWritableKeyPath<Value, Set<Enclosing>>?
+        private var objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>?
 
         public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>) {
             self.objectKeyPath = objectKeyPath
         }
 
-        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, Set<Enclosing>>) {
+        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>) {
             self.objectsKeyPath = objectsKeyPath
         }
 
@@ -51,8 +51,8 @@ public extension ObjectStore.Object {
                     if let newValue { newValue[keyPath: objectKeyPath] = instance }
                 }
                 if let objectsKeyPath {
-                    if let value { value[keyPath: objectsKeyPath].remove(instance) }
-                    if let newValue { newValue[keyPath: objectsKeyPath].insert(instance) }
+                    if let value, let index = value[keyPath: objectsKeyPath].firstIndex(of: instance) { value[keyPath: objectsKeyPath].remove(at: index) }
+                    if let newValue { newValue[keyPath: objectsKeyPath].append(instance) }
                 }
                 _value = newValue
                 if let document = instance.store?.document, let newValue {

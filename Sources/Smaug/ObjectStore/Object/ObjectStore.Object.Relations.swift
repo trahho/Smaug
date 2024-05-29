@@ -11,20 +11,20 @@ import Foundation
 public extension ObjectStore.Object {
     @propertyWrapper final class Relations<Enclosing, Value>: ReferenceStorage where Value: ObjectStore.Object, Enclosing: ObjectStore.Object {
         private var objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>?
-        private var objectsKeyPath: ReferenceWritableKeyPath<Value, Set<Enclosing>>?
+        private var objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>?
 
         public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>) {
             self.objectKeyPath = objectKeyPath
         }
 
-        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, Set<Enclosing>>) {
+        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>) {
             self.objectsKeyPath = objectsKeyPath
         }
 
         private var cancellable: AnyCancellable?
 
-        private var _value: Set<Value>?
-        var value: Set<Value> {
+        private var _value: [Value]?
+        var value: [Value] {
             get {
                 if let _value { return _value }
                 guard
@@ -40,28 +40,30 @@ public extension ObjectStore.Object {
             }
             set {
                 guard !instance.readOnly else { return }
-                let value = value
-                value.subtracting(newValue).forEach { value in
+                value.asSet.subtracting(newValue).forEach { value in
                     if let objectKeyPath {
                         value[keyPath: objectKeyPath] = nil
                     }
                     if let objectsKeyPath {
-                        value[keyPath: objectsKeyPath].remove(instance)
+                        guard let index = value[keyPath: objectsKeyPath].firstIndex(of: instance) else { return }
+                        value[keyPath: objectsKeyPath].remove(at: index)
                     }
                 }
-                newValue.subtracting(value).forEach { value in
+                newValue.asSet.subtracting(value).forEach { value in
                     if let objectKeyPath {
                         value[keyPath: objectKeyPath] = instance
                     }
                     if let objectsKeyPath {
-                        value[keyPath: objectsKeyPath].insert(instance)
+                        value[keyPath: objectsKeyPath].append(instance)
                     }
                 }
 
                 _value = newValue
                 if let document = instance.store?.document {
-                    newValue.subtracting(value).forEach { value in
-                        document.add(value)
+                    newValue.asSet.subtracting(value).forEach { value in
+                        if value.added == nil {
+                            document.add(value)
+                        }
                     }
                 }
             }
@@ -86,14 +88,14 @@ public extension ObjectStore.Object {
         }
 
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-        public var wrappedValue: Set<Value> {
+        public var wrappedValue: [Value] {
             get { fatalError() }
             set { fatalError() }
         }
 
         public static subscript(_enclosingInstance instance: Enclosing,
-                                wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Set<Value>>,
-                                storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Relations>) -> Set<Value>
+                                wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, [Value]>,
+                                storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Relations>) -> [Value]
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]

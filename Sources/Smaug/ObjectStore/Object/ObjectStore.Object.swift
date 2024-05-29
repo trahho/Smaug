@@ -62,6 +62,10 @@ extension ObjectStore {
         public subscript<T>(_ type: T.Type) -> Set<T> where T: ObjectStore.Object {
             store![type]
         }
+        
+        public subscript<T, S>(_ type: T.Type, _ ids: S) -> Set<T> where T: ObjectStore.Object, S:Sequence, S.Element == T.ID {
+            store![type, ids]
+        }
 
         public func add<T>(_ item: T) where T: ObjectStore.Object {
             store!.add(item)
