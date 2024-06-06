@@ -111,6 +111,10 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
         add(object)
         return object
     }
+    
+    public func callAsFunction<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
+        create(type)
+    }
 
     public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
         document[type, name]

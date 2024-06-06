@@ -52,7 +52,7 @@ public extension DatabaseDocument {
             } else {
                 let url = url.appending(component: name)
                 let document = T(url: url, containerDocument: parent)
-                var cancellable: AnyCancellable?
+                let cancellable: AnyCancellable? = nil
 //                if publishChange {
 //                    cancellable = document.objectWillChange.sink(receiveValue: { [self] in parent.objectWillChange.send() })
 //                }
