@@ -84,10 +84,10 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     }
 
     func stamped(content: Content) -> Data? {
-        guard 
-            let compressedData = content.encode()
-//            let data = content.encode(),
-//              let compressedData = try? (data as NSData).compressed(using: .lzfse) as Data
+        guard
+//            let compressedData = content.encode()
+            let data = content.encode(),
+            let compressedData = try? (data as NSData).compressed(using: .lzfse) as Data
         else { return nil }
         currentDataTimestamp = Date().timeIntervalSince1970
         let string = String(currentDataTimestamp)
@@ -168,7 +168,7 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
         data.removeSubrange(0 ..< timestampStringLenght)
 
         guard
-//            let data = try? (data as NSData).decompressed(using: .lzfse) as Data,
+            let data = try? (data as NSData).decompressed(using: .lzfse) as Data,
             let content = Content.decode(persistentData: data)
         else { return nil }
 
