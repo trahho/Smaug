@@ -82,7 +82,7 @@ public extension DatabaseDocument {
             try withMutation {
                 try content.addObject(item: item)
             }
-            print("Persistent added \(T.self)")
+//            print("Persistent added \(T.self)")
         }
 
         // MARK: - Wrapping

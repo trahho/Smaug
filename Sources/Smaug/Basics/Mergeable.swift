@@ -11,8 +11,8 @@ public protocol Mergeable {
     mutating func merge(other: any Mergeable) throws
 }
 
-public extension Mergeable {
-    func merge(other: any Mergeable) throws {
-        throw MergeError.mergeFailed
-    }
-}
+//public extension Mergeable {
+//    func merge(other: any Mergeable) throws {
+//        throw MergeError.mergeFailed
+//    }
+//}

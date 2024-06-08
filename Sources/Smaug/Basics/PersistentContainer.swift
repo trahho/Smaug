@@ -137,14 +137,15 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     }
 
     fileprivate func updateContent(_ newContent: Content) {
-        if let newContent = newContent as? Mergeable, let content = content as? Mergeable {
+        if let newContent = newContent as? Mergeable, var content = content as? Mergeable {
             do {
                 isMerging = true
                 try content.merge(other: newContent)
                 isMerging = false
             } catch {}
+        } else {
+            setContent(newContent)
         }
-        setContent(newContent)
     }
 
     func restore(content: Content) {
@@ -189,7 +190,7 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
         else { return }
 
 //        #if TRACKPERSISTENCE
-        print("PersistentDataContainer<\(String(reflecting: Content.self))>: Load")
+        print("PersistentDataContainer<\(String(reflecting: Content.self))>: Load \(url.absoluteString)")
 //        #endif
 
         restore(content: newContent)

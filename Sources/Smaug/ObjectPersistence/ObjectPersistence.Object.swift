@@ -23,6 +23,16 @@ extension ObjectPersistence {
         public func hash(into hasher: inout Hasher) {
             hasher.combine(id)
         }
+        
+        open func merge(other: Mergeable) throws {
+            guard let other = other as? Self, other.id == id else { return }
+
+//            if let added, let otherAdded = other.added, otherAdded < added { self.added = other.added }
+
+            for var (own, other) in zip(mirror(for: Mergeable.self), other.mirror(for: Mergeable.self)) {
+                try own.value.merge(other: other.value)
+            }
+        }
     }
 }
 

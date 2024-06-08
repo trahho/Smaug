@@ -60,7 +60,7 @@ extension ObjectPersistence.Object.Property: Mergeable {
         if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
             try withMutation {
                 changed = otherChanged
-                if let ownValue = _value as? Mergeable, let otherValue = other._value as? Mergeable {
+                if var ownValue = _value as? Mergeable, let otherValue = other._value as? Mergeable {
                     try ownValue.merge(other: otherValue)
                 } else {
                     _value = other._value

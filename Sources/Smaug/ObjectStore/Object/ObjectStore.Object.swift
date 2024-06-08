@@ -88,7 +88,7 @@ extension ObjectStore {
 
             if let added, let otherAdded = other.added, otherAdded < added { self.added = other.added }
 
-            for (own, other) in zip(mirror(for: Mergeable.self), other.mirror(for: Mergeable.self)) {
+            for var (own, other) in zip(mirror(for: Mergeable.self), other.mirror(for: Mergeable.self)) {
                 try own.value.merge(other: other.value)
             }
         }

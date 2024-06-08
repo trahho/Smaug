@@ -16,19 +16,26 @@ public extension ObjectStore.Object {
         }
 
         private var _value: Value?
+        private var defaultValue: (() -> Value)?
         private var changed: Date?
         weak var instance: ObjectStore.Object?
 
         private func value<U>(_: U.Type) -> U? where U: ExpressibleByNilLiteral {
-            _value as? U
+            if let defaultValue, _value == nil {
+                return defaultValue() as? U
+            }
+            return _value as? U
         }
 
         private func value<U>(_: U.Type) -> U {
-            _value as! U
+            if let defaultValue, _value == nil {
+                return defaultValue() as! U
+            }
+            return _value as! U
         }
 
         public init(wrappedValue: @autoclosure @escaping () -> Value) {
-            _value = wrappedValue()
+            defaultValue = wrappedValue
         }
 
         public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
@@ -63,7 +70,7 @@ extension ObjectStore.Object.Property: Mergeable {
         if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
             try withMutation {
                 changed = otherChanged
-                if let ownValue = _value as? Mergeable, let otherValue = other._value as? Mergeable {
+                if var ownValue = _value as? Mergeable, let otherValue = other._value as? Mergeable {
                     try ownValue.merge(other: otherValue)
                 } else {
                     _value = other._value
