@@ -86,7 +86,7 @@ public extension ObjectStore.Object {
 }
 
 
-extension ObjectStore.Object.Objects: Mergeable {
+extension ObjectStore.Object.Objects: MergeablePropertyWrapper {
     public func merge(other: Mergeable) throws {
         guard let other = other as? Self else { return }
         if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {

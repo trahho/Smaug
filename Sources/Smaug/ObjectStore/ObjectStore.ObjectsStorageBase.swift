@@ -21,9 +21,9 @@ public extension ObjectStore {
         // MARK: - Restoration
 
         override public func merge(other: Mergeable) throws {
-            guard Self.self is Mergeable, let other = other as? Self else { return }
+            guard  let other = other as? Self else { return }
+            try mergeItems(other)
             try withMutation {
-                try mergeItems(other)
                 importItems(other)
                 deleteItems(other)
             }

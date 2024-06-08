@@ -54,7 +54,7 @@ public extension ObjectPersistence.Object {
     }
 }
 
-extension ObjectPersistence.Object.Property: Mergeable {
+extension ObjectPersistence.Object.Property: MergeablePropertyWrapper {
     public func merge(other: Mergeable) throws {
         guard let other = other as? Self else { return }
         if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {

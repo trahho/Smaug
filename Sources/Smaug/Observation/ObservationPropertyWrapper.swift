@@ -12,7 +12,9 @@ public class ObservationPropertyWrapper {
     typealias AccessAction = () -> ()
     typealias MutationAction = (() throws -> ()) throws -> ()
     
-    var withMutation: MutationAction = { action in try action() }
+    var withMutation: MutationAction = {
+        action in try action()
+    }
     var showAccess: AccessAction = {}
 
     func configureObservation<Enclosing, T>(instance: Enclosing, keyPath: ReferenceWritableKeyPath<Enclosing, T>) where Enclosing: ObservationInstance {

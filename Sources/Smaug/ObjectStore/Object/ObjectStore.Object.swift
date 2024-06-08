@@ -37,8 +37,8 @@ extension ObjectStore {
         }
 
         public required init() {}
-        
-        public init(id: ID){
+
+        public init(id: ID) {
             self.id = id
         }
 
@@ -62,8 +62,8 @@ extension ObjectStore {
         public subscript<T>(_ type: T.Type) -> Set<T> where T: ObjectStore.Object {
             store![type]
         }
-        
-        public subscript<T, S>(_ type: T.Type, _ ids: S) -> Set<T> where T: ObjectStore.Object, S:Sequence, S.Element == T.ID {
+
+        public subscript<T, S>(_ type: T.Type, _ ids: S) -> Set<T> where T: ObjectStore.Object, S: Sequence, S.Element == T.ID {
             store![type, ids]
         }
 
@@ -88,7 +88,7 @@ extension ObjectStore {
 
             if let added, let otherAdded = other.added, otherAdded < added { self.added = other.added }
 
-            for var (own, other) in zip(mirror(for: Mergeable.self), other.mirror(for: Mergeable.self)) {
+            for var (own, other) in zip(mirror(for: MergeablePropertyWrapper.self), other.mirror(for: MergeablePropertyWrapper.self)) {
                 try own.value.merge(other: other.value)
             }
         }
@@ -100,6 +100,7 @@ extension ObjectStore.Object: Persistent {
         var container = encoder.container(keyedBy: PersistentCodingKey.self)
 
         try container.encode(id, forKey: PersistentCodingKey(key: "ID"))
+        try container.encode(added, forKey: PersistentCodingKey(key: "ADDED"))
 
         try mirror(for: PersistentProperty.self)
             .forEach { (label: String, value: PersistentProperty) in
@@ -111,6 +112,7 @@ extension ObjectStore.Object: Persistent {
         let container = try decoder.container(keyedBy: PersistentCodingKey.self)
 
         try id = container.decode(ID.self, forKey: PersistentCodingKey(key: "ID"))
+        try added = container.decode(Date.self, forKey: PersistentCodingKey(key: "ADDED"))
 
         try mirror(for: PersistentProperty.self)
             .forEach { (label: String, value: PersistentProperty) in
