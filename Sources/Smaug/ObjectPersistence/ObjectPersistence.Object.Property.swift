@@ -7,7 +7,7 @@
 
 import Foundation
 public extension ObjectPersistence.Object {
-    @propertyWrapper final class Property<Value>: ObservationPropertyWrapper where Value: Codable {
+    @propertyWrapper final class Property<Value>: ObjectStore.ObjectPropertyWrapper where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
             get { fatalError() }
@@ -28,6 +28,15 @@ public extension ObjectPersistence.Object {
 
         public init(wrappedValue: @autoclosure @escaping () -> Value) {
             self._value = wrappedValue()
+        }
+        
+        public var projectedValue: ObjectStore.ObjectPropertyWrapper {
+            self
+        }
+        
+        override func resetValue() {
+            _value = nil
+            changed = Date()
         }
 
         public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,

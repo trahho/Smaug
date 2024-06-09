@@ -23,7 +23,7 @@ extension ObjectPersistence {
         public func hash(into hasher: inout Hasher) {
             hasher.combine(id)
         }
-        
+
         open func merge(other: Mergeable) throws {
             guard let other = other as? Self, other.id == id else { return }
 

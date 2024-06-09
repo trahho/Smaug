@@ -7,8 +7,18 @@
 
 import Foundation
 
+public extension ObjectStore {
+    class ObjectPropertyWrapper: ObservationPropertyWrapper {
+        func resetValue() {
+            
+        }
+    }
+}
+
 public extension ObjectStore.Object {
-    @propertyWrapper final class Property<Value>: ObservationPropertyWrapper where Value: Codable {
+   
+
+    @propertyWrapper final class Property<Value>: ObjectStore.ObjectPropertyWrapper where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
             get { fatalError() }
@@ -36,6 +46,15 @@ public extension ObjectStore.Object {
 
         public init(wrappedValue: @autoclosure @escaping () -> Value) {
             defaultValue = wrappedValue
+        }
+        
+        public var projectedValue: ObjectStore.ObjectPropertyWrapper {
+            self
+        }
+        
+        override func resetValue() {
+            _value = nil
+            changed = instance?.writingTimestamp
         }
 
         public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
