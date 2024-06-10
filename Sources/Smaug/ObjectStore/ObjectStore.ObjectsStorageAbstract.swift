@@ -10,9 +10,10 @@ public extension ObjectStore {
     class ObjectsStorageAbstract<T>: ObjectsStorage where T: Object {
         // MARK: - Key
         
+        var instance: ObjectStore!
+
         var value: Set<T> { fatalError() }
         var deletedTimestamp: Date?
-        
         
 //        func configureObservation<Enclosing>(instance: Enclosing, keyPath: ReferenceWritableKeyPath<Enclosing, Set<T>>) where Enclosing: ObjectStore {
 //            withMutation = { action in

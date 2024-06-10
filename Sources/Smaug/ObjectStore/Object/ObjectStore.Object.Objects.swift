@@ -53,7 +53,8 @@ public extension ObjectStore.Object {
 //                }
             }
         }
-
+        
+     
         override func adopt(document: DatabaseDocument) {
             if let _value { _value.forEach { document.add($0) }}
         }
@@ -78,8 +79,9 @@ public extension ObjectStore.Object {
                 storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
                 try! storage.withMutation {
                     storage.value = newValue
+                    storage.changed = instance.writingTimestamp
                 }
-                instance.store?.objectDidChange.send()
+                instance.store?.didChange()
             }
         }
     }

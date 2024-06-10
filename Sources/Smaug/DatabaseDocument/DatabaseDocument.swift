@@ -173,14 +173,12 @@ open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInst
         try! getObjects(type: type)
     }
     
-    public subscript<T, S>(_ type: T.Type, _ ids: S) -> Set<T> where T: ObjectStore.Object, S:Sequence, S.Element == T.ID {
+    public subscript<T, S>(_ type: T.Type, _ ids: S) -> Set<T> where T: ObjectStore.Object, S: Sequence, S.Element == T.ID {
         ids.compactMap { try! getObject(type: type, id: $0) }.asSet
     }
     
     public subscript<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
-        let object = T()
-        add(object)
-        return object
+        create(type)
     }
     
     public subscript<T>() -> T where T: ObjectStore.Object {
@@ -197,6 +195,11 @@ open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInst
     @discardableResult public func create<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
         let object = T()
         add(object)
+        return object
+    }
+    
+    @discardableResult public func create<T>(_ type: T.Type) -> T where T: ObjectPersistence.Object {
+        let object = T()
         return object
     }
     

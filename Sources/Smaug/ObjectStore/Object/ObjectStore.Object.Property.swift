@@ -7,17 +7,9 @@
 
 import Foundation
 
-public extension ObjectStore {
-    class ObjectPropertyWrapper: ObservationPropertyWrapper {
-        func resetValue() {
-            
-        }
-    }
-}
+
 
 public extension ObjectStore.Object {
-   
-
     @propertyWrapper final class Property<Value>: ObjectStore.ObjectPropertyWrapper where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
@@ -26,36 +18,31 @@ public extension ObjectStore.Object {
         }
 
         private var _value: Value?
-        private var defaultValue: (() -> Value)?
         private var changed: Date?
         weak var instance: ObjectStore.Object?
 
         private func value<U>(_: U.Type) -> U? where U: ExpressibleByNilLiteral {
-            if let defaultValue, _value == nil {
-                return defaultValue() as? U
-            }
-            return _value as? U
+            _value as? U
         }
 
         private func value<U>(_: U.Type) -> U {
-            if let defaultValue, _value == nil {
-                return defaultValue() as! U
-            }
-            return _value as! U
+            _value as! U
         }
 
         public init(wrappedValue: @autoclosure @escaping () -> Value) {
-            defaultValue = wrappedValue
+            _value = wrappedValue()
         }
-        
+
         public var projectedValue: ObjectStore.ObjectPropertyWrapper {
             self
         }
-        
+
         override func resetValue() {
             _value = nil
             changed = instance?.writingTimestamp
         }
+        
+  
 
         public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
                                            wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Value>,
@@ -77,7 +64,7 @@ public extension ObjectStore.Object {
                     storage._value = newValue
                     storage.changed = instance.writingTimestamp
                 }
-                instance.store?.objectDidChange.send()
+                instance.store?.didChange()
             }
         }
     }

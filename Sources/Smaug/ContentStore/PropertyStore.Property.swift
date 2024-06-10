@@ -16,6 +16,8 @@ public extension PropertyStore {
         }
 
         private var _value: Value?
+        private var defaultValue: (() -> Value)?
+        private var changed: Date?
 
         private func value<U>(_: U.Type) -> U? where U: ExpressibleByNilLiteral {
             _value as? U
@@ -44,19 +46,46 @@ public extension PropertyStore {
                 storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
                 try! storage.withMutation {
                     storage._value = newValue
+                    storage.changed = Date()
                 }
-                instance.objectDidChange.send()
+                instance.didChange()
             }
         }
     }
 }
 
+extension PropertyStore.Property: MergeablePropertyWrapper {
+    public func merge(other: Mergeable) throws {
+        guard let other = other as? Self else { return }
+        if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
+            try withMutation {
+                changed = otherChanged
+                if var ownValue = _value as? Mergeable, let otherValue = other._value as? Mergeable {
+                    try ownValue.merge(other: otherValue)
+                    _value = ownValue as? Value
+                } else {
+                    _value = other._value
+                }
+            }
+        }
+    }
+}
+
+
 extension PropertyStore.Property: PersistentProperty {
+    struct Coded: Codable {
+        var value: Value?
+        var changed: Date
+    }
+
     func encode(into container: inout EncodingContainer, key: PersistentCodingKey) throws {
-        try container.encodeIfPresent(_value, forKey: key)
+        guard let changed else { return }
+        try container.encodeIfPresent(Coded(value: _value, changed: changed), forKey: key)
     }
 
     func decode(from container: DecodingContainer, key: PersistentCodingKey) throws {
-        _value = try? container.decodeIfPresent(Value.self, forKey: key)
+        guard let coded = try? container.decodeIfPresent(Coded.self, forKey: key) else { return }
+        _value = coded.value
+        changed = coded.changed
     }
 }

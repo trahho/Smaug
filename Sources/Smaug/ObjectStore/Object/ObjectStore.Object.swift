@@ -9,37 +9,18 @@ import Combine
 import Foundation
 import Observation
 
+
 extension ObjectStore {
-    open class Object: Identifiable, Hashable, Reflectable, Mergeable, ObservationInstance {
-        public typealias ID = UUID
-
-        public internal(set) var id: ID = UUID()
-
-        public static func == (lhs: ObjectStore.Object, rhs: ObjectStore.Object) -> Bool {
-            lhs.id == rhs.id
-        }
-
-        public func hash(into hasher: inout Hasher) {
-            hasher.combine(id)
-        }
-
+    open class Object: ObjectBase {
         var store: ObjectStore?
 //        var document: DatabaseDocument? { store?.document }
         public internal(set) var isStatic = false
 
         var added: Date?
 
-        public let observationRegistrar = Observation.ObservationRegistrar()
-
         var readOnly: Bool {
             guard let document = store?.document else { return false }
             return document.readOnly || (!document.inSetup && isStatic)
-        }
-
-        public required init() {}
-
-        public init(id: ID) {
-            self.id = id
         }
 
         // MARK: - Timing
@@ -83,40 +64,24 @@ extension ObjectStore {
             try! store!.deleteObject(item: self)
         }
 
-        open func merge(other: Mergeable) throws {
+        override public func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: PersistentCodingKey.self)
+            try container.encode(added, forKey: PersistentCodingKey(key: "ADDED"))
+            try super.encode(to: encoder)
+        }
+
+        override public func decode(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: PersistentCodingKey.self)
+            try added = container.decode(Date.self, forKey: PersistentCodingKey(key: "ADDED"))
+            try super.decode(from: decoder)
+        }
+
+        override open func merge(other: Mergeable) throws {
             guard let other = other as? Self, other.id == id else { return }
 
             if let added, let otherAdded = other.added, otherAdded < added { self.added = other.added }
 
-            for var (own, other) in zip(mirror(for: MergeablePropertyWrapper.self), other.mirror(for: MergeablePropertyWrapper.self)) {
-                try own.value.merge(other: other.value)
-            }
+            try super.merge(other: other)
         }
-    }
-}
-
-extension ObjectStore.Object: Persistent {
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: PersistentCodingKey.self)
-
-        try container.encode(id, forKey: PersistentCodingKey(key: "ID"))
-        try container.encode(added, forKey: PersistentCodingKey(key: "ADDED"))
-
-        try mirror(for: PersistentProperty.self)
-            .forEach { (label: String, value: PersistentProperty) in
-                try value.encode(into: &container, key: PersistentCodingKey(key: label))
-            }
-    }
-
-    public func decode(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: PersistentCodingKey.self)
-
-        try id = container.decode(ID.self, forKey: PersistentCodingKey(key: "ID"))
-        try added = container.decode(Date.self, forKey: PersistentCodingKey(key: "ADDED"))
-
-        try mirror(for: PersistentProperty.self)
-            .forEach { (label: String, value: PersistentProperty) in
-                try value.decode(from: container, key: PersistentCodingKey(key: label))
-            }
     }
 }

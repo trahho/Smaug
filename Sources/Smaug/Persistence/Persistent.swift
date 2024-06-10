@@ -26,6 +26,8 @@ public extension PersistentContent where Self: Codable {
     }
 }
 
+
+
 public protocol Persistent: Codable {
     init()
     func decode(from decoder: Decoder) throws

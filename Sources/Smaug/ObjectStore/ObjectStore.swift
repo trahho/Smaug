@@ -30,6 +30,10 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
     public var objectDidChange: ObjectDidChangePublisher = .init()
     public let observationRegistrar = Observation.ObservationRegistrar()
 
+    public func didChange(){
+        objectDidChange.send()
+    }
+    
     // MARK: - Initialisation
 
     public required init() {}
@@ -50,13 +54,17 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
             try own.value.merge(other: other.value)
             own.value.setStore(store: self)
         }
-        objectDidChange.send()
+        didChange()
     }
 
     // MARK: - Storage
 
     func storage<T>(type: T.Type) -> ObjectsStorageAbstract<T>? {
-        mirror(for: ObjectsStorageAbstract<T>.self).first?.value
+        let storage = mirror(for: ObjectsStorageAbstract<T>.self).first?.value
+        if let storage, storage.instance == nil {
+            storage.instance = self
+        }
+        return storage
     }
 
     func getObject<T>(type: T.Type, id: T.ID) throws -> T? where T: ObjectStore.Object {
@@ -78,14 +86,14 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
         item.added = writingTimestamp
         item.store = self
         item.adopt(document: document)
-        objectDidChange.send()
+        didChange()
     }
 
     func deleteObject<T>(item: T) throws where T: ObjectStore.Object {
         guard let storage = storage(type: T.self) else { throw DatabaseDocument.Failure.typeNotFound }
         guard storage.getObject(id: item.id) == item else { return }
         storage.deleteObject(item: item)
-        objectDidChange.send()
+        didChange()
     }
 
     // MARK: - Access
@@ -97,8 +105,8 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
     public subscript<T>(_ type: T.Type) -> Set<T> where T: ObjectStore.Object {
         document[type]
     }
-    
-    public subscript<T, S>(_ type: T.Type, _ ids: S) -> Set<T> where T: ObjectStore.Object, S:Sequence, S.Element == T.ID {
+
+    public subscript<T, S>(_ type: T.Type, _ ids: S) -> Set<T> where T: ObjectStore.Object, S: Sequence, S.Element == T.ID {
         document[type, ids]
     }
 
@@ -111,7 +119,11 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
         add(object)
         return object
     }
-    
+
+    public func delete<T>(_ item: T) where T: ObjectStore.Object {
+        try! deleteObject(item: item)
+    }
+
     public func callAsFunction<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
         create(type)
     }

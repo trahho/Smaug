@@ -25,6 +25,10 @@ open class PropertyStore: PersistentContent, ContentContainer, ObservationInstan
     public var objectDidChange: ObjectDidChangePublisher = .init()
     public let observationRegistrar = ObservationRegistrar()
 
+    public func didChange() {
+        objectDidChange.send()
+    }
+    
     // MARK: - Initialisation
 
     public required init() {}

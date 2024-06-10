@@ -12,8 +12,6 @@ public extension ObjectStore {
 
         typealias StorageDictionary = [T.ID: T]
 
-        var instance: ObjectStore!
-
         override var value: Set<T> {
             instance.document[T.self]
         }
