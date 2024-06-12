@@ -10,8 +10,8 @@ import Foundation
 
 public extension ObjectStore.Object {
     @propertyWrapper final class Relations<Enclosing, Value>: ReferenceStorage where Value: ObjectStore.Object, Enclosing: ObjectStore.Object {
-        private var objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>?
-        private var objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>?
+        internal var objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>?
+        internal var objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>?
 
         public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>) {
             self.objectKeyPath = objectKeyPath
@@ -66,6 +66,12 @@ public extension ObjectStore.Object {
                         }
                     }
                 }
+            }
+        }
+        
+        override func resetValue() {
+            try! withMutation {
+                _value = nil
             }
         }
 

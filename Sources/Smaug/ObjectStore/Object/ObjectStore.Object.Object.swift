@@ -21,6 +21,7 @@ public extension ObjectStore.Object {
         private var _id: Value.ID?
         private var _value: Value?
         private var changed: Date?
+        private var resetRelation: (() -> Void)?
 
         private weak var _instance: ObjectStore.Object?
 
@@ -59,8 +60,6 @@ public extension ObjectStore.Object {
 //                }
             }
         }
-        
-    
 
         override func adopt(document: DatabaseDocument) {
             if let _value { document.add(_value) }
@@ -74,6 +73,7 @@ public extension ObjectStore.Object {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
                 storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                storage.resetRelation = { storage.resetRelations(keyPath: wrappedKeyPath) }
                 storage.showAccess()
                 return storage.value
             }
@@ -82,12 +82,29 @@ public extension ObjectStore.Object {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
                 storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                storage.resetRelation = { storage.resetRelations(keyPath: wrappedKeyPath) }
                 try! storage.withMutation {
+                    storage.resetRelation?()
                     storage.value = newValue
                     storage.changed = instance.writingTimestamp
+                    storage.resetRelation?()
                 }
                 instance.store?.didChange()
             }
+        }
+
+        func resetRelations<Enclosing>(keyPath: KeyPath<Enclosing, Value?>) where Enclosing: ObjectStore.Object {
+            guard let value else { return }
+            value.mirror(for: Relation<Value, Enclosing>.self)
+                .filter { $0.value.objectKeyPath == keyPath }
+                .forEach {
+                    $0.value.resetValue()
+                }
+            value.mirror(for: Relations<Value, Enclosing>.self)
+                .filter { $0.value.objectKeyPath == keyPath }
+                .forEach {
+                    $0.value.resetValue()
+                }
         }
     }
 }
@@ -98,8 +115,10 @@ extension ObjectStore.Object.Object: MergeablePropertyWrapper {
         if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
             try withMutation {
                 changed = otherChanged
+                resetRelation?()
                 _id = other._id
                 _value = nil
+                resetRelation?()
             }
         }
     }
