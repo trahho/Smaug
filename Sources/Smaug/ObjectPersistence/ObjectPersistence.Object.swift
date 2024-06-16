@@ -9,10 +9,9 @@ import Foundation
 
 extension ObjectPersistence {
     open class Object: ObjectStore.ObjectBase {
-        
-        func duplicate () -> Self {
-            var result = Self()
-            for var (own, other) in zip(mirror(for: ObjectPersistence.Object.PropertyBase.self), result.mirror(for: ObjectPersistence.Object.PropertyBase.self)) {
+        func duplicate() -> Self {
+            let result = Self()
+            for (own, other) in zip(mirror(for: ObjectPersistence.Object.PropertyBase.self), result.mirror(for: ObjectPersistence.Object.PropertyBase.self)) {
                 other.value.takeValue(other: own.value)
             }
             return result

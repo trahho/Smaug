@@ -9,12 +9,15 @@ import Combine
 import Foundation
 import Observation
 
-
 extension ObjectStore {
     open class Object: ObjectBase {
         var store: ObjectStore?
 //        var document: DatabaseDocument? { store?.document }
         public internal(set) var isStatic = false
+
+        public func toggleStatic() {
+            isStatic.toggle()
+        }
 
         var added: Date?
 

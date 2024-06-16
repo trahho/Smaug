@@ -32,8 +32,9 @@ extension ObjectStore {
         open func merge(other: Mergeable) throws {
             guard let other = other as? Self, other.id == id else { return }
 
-            for var (own, other) in zip(mirror(for: MergeablePropertyWrapper.self), other.mirror(for: MergeablePropertyWrapper.self)) {
-                try own.value.merge(other: other.value)
+            for  (own, other) in zip(mirror(for: MergeablePropertyWrapper.self), other.mirror(for: MergeablePropertyWrapper.self)) {
+                var value = own.value
+                try value.merge(other: other.value)
             }
         }
 

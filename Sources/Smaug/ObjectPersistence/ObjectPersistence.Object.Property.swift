@@ -7,11 +7,10 @@
 
 import Foundation
 public extension ObjectPersistence.Object {
-    
-    class PropertyBase: ObjectStore.ObjectPropertyWrapper    {
-        func takeValue(other: ObjectStore.ObjectPropertyWrapper) {}
+    class PropertyBase: ObjectStore.ObjectPropertyWrapper {
+        func takeValue(other _: ObjectStore.ObjectPropertyWrapper) {}
     }
-    
+
     @propertyWrapper final class Property<Value>: PropertyBase where Value: Codable {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
@@ -86,6 +85,13 @@ extension ObjectPersistence.Object.Property: MergeablePropertyWrapper {
                 }
             }
         }
+    }
+}
+
+public extension Array where Array.Element: ObjectPersistence.Object {
+    mutating func removeItem(_ item: Element) {
+        guard let index = self.firstIndex(of: item) else { return }
+        self.remove(at: index)
     }
 }
 

@@ -130,3 +130,10 @@ extension ObjectStore.Object.Objects: PersistentProperty {
         var changed: Date
     }
 }
+
+public extension Array where Array.Element: ObjectStore.Object {
+    mutating func removeItem(_ item: Element) {
+        guard let index = self.firstIndex(of: item) else { return }
+        self.remove(at: index)
+    }
+}
