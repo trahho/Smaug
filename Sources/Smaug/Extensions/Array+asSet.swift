@@ -18,3 +18,18 @@ public extension Array where Element: Hashable {
         }
     }
 }
+
+
+public extension Array where Element: ObjectStore.Object {
+    mutating func remove(item: Element) {
+        guard let index = firstIndex(of: item) else { return }
+        remove(at: index)
+    }
+}
+
+public extension Array where Element: ObjectPersistence.Object {
+    mutating func remove(item: Element) {
+        guard let index = firstIndex(of: item) else { return }
+        remove(at: index)
+    }
+}

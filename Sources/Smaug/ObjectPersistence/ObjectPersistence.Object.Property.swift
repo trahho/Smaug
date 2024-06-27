@@ -88,12 +88,7 @@ extension ObjectPersistence.Object.Property: MergeablePropertyWrapper {
     }
 }
 
-public extension Array where Array.Element: ObjectPersistence.Object {
-    mutating func removeItem(_ item: Element) {
-        guard let index = self.firstIndex(of: item) else { return }
-        self.remove(at: index)
-    }
-}
+
 
 extension Array: Mergeable where Array.Element: ObjectPersistence.Object {
     func firstIndex(of other: ObjectPersistence.Object, at index: Index) -> Index? {

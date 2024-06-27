@@ -15,14 +15,14 @@ public extension ObjectStore.Object {
             get { fatalError() }
             set { fatalError() }
         }
-        
+
         private var cancellable: AnyCancellable?
-        
+
         private var _ids: [Value.ID]?
         private var _value: [Value]?
         private var changed: Date?
         private var resetRelation: (() -> Void)?
-        
+
         var value: [Value] {
             get {
                 if let _value { return _value }
@@ -30,7 +30,7 @@ public extension ObjectStore.Object {
                     let database = instance.store?.document,
                     let ids = _ids
                 else { return [] }
-                
+
                 _value = ids.compactMap { database[Value.self, $0] }
                 return _value!
             }
@@ -40,7 +40,7 @@ public extension ObjectStore.Object {
                 _value = newValue
             }
         }
-        
+
         private weak var _instance: ObjectStore.Object?
         private var instance: ObjectStore.Object {
             get { _instance! }
@@ -49,11 +49,11 @@ public extension ObjectStore.Object {
                 _instance = newValue
             }
         }
-        
+
         override func adopt(document: DatabaseDocument) {
             if let _value { _value.forEach { document.add($0) }}
         }
-        
+
         public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
                                            wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, [Value]>,
                                            storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Objects>) -> [Value] where Enclosing: ObjectStore.Object
@@ -81,7 +81,7 @@ public extension ObjectStore.Object {
                 instance.store?.didChange()
             }
         }
-        
+
         func resetRelations<Enclosing>(keyPath: KeyPath<Enclosing, [Value]>) where Enclosing: ObjectStore.Object {
             value.forEach { value in
                 value
@@ -131,9 +131,3 @@ extension ObjectStore.Object.Objects: PersistentProperty {
     }
 }
 
-public extension Array where Array.Element: ObjectStore.Object {
-    mutating func removeItem(_ item: Element) {
-        guard let index = self.firstIndex(of: item) else { return }
-        self.remove(at: index)
-    }
-}

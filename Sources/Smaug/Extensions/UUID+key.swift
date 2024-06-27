@@ -35,6 +35,7 @@ public extension UUID {
         )
         self.init(uuid: uuid)
     }
+    
 
     static var `nil`: UUID {
         let uuid: uuid_t = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
