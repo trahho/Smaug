@@ -13,12 +13,22 @@ public extension ObjectStore.Object {
         internal var objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>?
         internal var objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>?
 
-        public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>) {
+        private var deleteReferences: Bool
+
+        
+        override func deleteRelations() {
+            guard deleteReferences, let value else { return }
+            value.delete()
+        }
+        
+        public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>,deleteReferences: Bool = false) {
             self.objectKeyPath = objectKeyPath
+            self.deleteReferences = deleteReferences
         }
 
-        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>) {
+        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>,deleteReferences: Bool = false) {
             self.objectsKeyPath = objectsKeyPath
+            self.deleteReferences = deleteReferences
         }
 
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")

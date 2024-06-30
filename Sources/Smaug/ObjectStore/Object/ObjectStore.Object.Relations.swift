@@ -10,15 +10,24 @@ import Foundation
 
 public extension ObjectStore.Object {
     @propertyWrapper final class Relations<Enclosing, Value>: ReferenceStorage where Value: ObjectStore.Object, Enclosing: ObjectStore.Object {
-        internal var objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>?
-        internal var objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>?
+        var objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>?
+        var objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>?
 
-        public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>) {
-            self.objectKeyPath = objectKeyPath
+        private var deleteReferences: Bool
+
+        override func deleteRelations() {
+            guard deleteReferences else { return }
+            value.forEach { $0.delete() }
         }
 
-        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>) {
+        public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>, deleteReferences: Bool = false) {
+            self.objectKeyPath = objectKeyPath
+            self.deleteReferences = deleteReferences
+        }
+
+        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>, deleteReferences: Bool = false) {
             self.objectsKeyPath = objectsKeyPath
+            self.deleteReferences = deleteReferences
         }
 
         private var cancellable: AnyCancellable?
@@ -49,7 +58,7 @@ public extension ObjectStore.Object {
                         value[keyPath: objectsKeyPath].remove(at: index)
                     }
                 }
-                newValue.asSet.subtracting(value).forEach { value in
+                for value in newValue.asSet.subtracting(value) {
                     if let objectKeyPath {
                         value[keyPath: objectKeyPath] = instance
                     }
@@ -60,7 +69,7 @@ public extension ObjectStore.Object {
 
                 _value = newValue
                 if let document = instance.store?.document {
-                    newValue.asSet.subtracting(value).forEach { value in
+                    for value in newValue.asSet.subtracting(value) {
                         if value.added == nil {
                             document.add(value)
                         }
@@ -68,7 +77,7 @@ public extension ObjectStore.Object {
                 }
             }
         }
-        
+
         override func resetValue() {
             try! withMutation {
                 _value = nil

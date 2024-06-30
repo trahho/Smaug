@@ -9,7 +9,7 @@ import Foundation
 
 public extension ObjectStore.Object {
     class ReferenceStorage: ObjectStore.ObjectPropertyWrapper {
-        
+        func deleteRelations() {}
         func adopt(document _: DatabaseDocument) {}
     }
 }

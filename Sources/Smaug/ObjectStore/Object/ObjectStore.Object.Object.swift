@@ -22,6 +22,16 @@ public extension ObjectStore.Object {
         private var _value: Value?
         private var changed: Date?
         private var resetRelation: (() -> Void)?
+        private var deleteReference: Bool
+
+        public init(deleteReference: Bool = false) {
+            self.deleteReference = deleteReference
+        }
+        
+        override func deleteRelations() {
+            guard deleteReference, let value else { return }
+            value.delete()
+        }
 
         private weak var _instance: ObjectStore.Object?
 

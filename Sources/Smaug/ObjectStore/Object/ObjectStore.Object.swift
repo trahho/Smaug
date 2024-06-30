@@ -65,6 +65,9 @@ extension ObjectStore {
 
         public func delete() {
             try! store!.deleteObject(item: self)
+            for (_, value) in mirror(for: ReferenceStorage.self) {
+                value.deleteRelations()
+            }
         }
 
         override public func encode(to encoder: Encoder) throws {

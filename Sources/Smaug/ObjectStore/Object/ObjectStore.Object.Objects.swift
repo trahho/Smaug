@@ -22,6 +22,16 @@ public extension ObjectStore.Object {
         private var _value: [Value]?
         private var changed: Date?
         private var resetRelation: (() -> Void)?
+        private var deleteReferences: Bool
+
+        public init(deleteReferences: Bool = false) {
+            self.deleteReferences = deleteReferences
+        }
+        
+        override func deleteRelations() {
+            guard deleteReferences else { return }
+            value.forEach { $0.delete() }
+        }
 
         var value: [Value] {
             get {
