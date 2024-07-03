@@ -11,7 +11,7 @@ import Observation
 
 extension ObjectStore {
     open class Object: ObjectBase {
-        var store: ObjectStore?
+        public internal(set) var store: ObjectStore?
 //        var document: DatabaseDocument? { store?.document }
         public internal(set) var isStatic = false
 

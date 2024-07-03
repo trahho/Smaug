@@ -11,6 +11,6 @@ public extension ObjectStore {
     class ObjectsStorage: ObservationPropertyWrapper, Mergeable {
         public func setStore(store: ObjectStore) {}
         public func merge(other: Mergeable) throws {}
-        var store: ObjectStore!
+        public internal (set) var store: ObjectStore!
     }
 }

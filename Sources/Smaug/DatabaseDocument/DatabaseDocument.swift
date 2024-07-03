@@ -34,17 +34,17 @@ open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInst
     public required init(url: URL, containerDocument: DatabaseDocument? = nil) {
         self.containerDocument = containerDocument
         let storages = mirror(for: Storage.self)
-        storages.forEach {
-            $0.value.setup(url: url, name: $0.label, document: self)
+        for storage in storages {
+            storage.value.setup(url: url, name: storage.label, document: self)
         }
         
         inSetup = true
         setup()
         inSetup = false
         
-        storages.forEach {
-            $0.value.load()
-            $0.value.start()
+        for storage in storages {
+            storage.value.load()
+            storage.value.start()
         }
     }
     
@@ -184,6 +184,11 @@ open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInst
     public subscript<T>() -> T where T: ObjectStore.Object {
         get { fatalError() }
         set { add(newValue) }
+    }
+    
+    public subscript<T>() -> [T] where T: ObjectStore.Object {
+        get { fatalError() }
+        set { newValue.forEach { add($0) } }
     }
     
     public func add<T>(_ item: T) where T: ObjectStore.Object {
