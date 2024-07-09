@@ -8,7 +8,7 @@
 import Foundation
 
 public extension ObjectStore.Object {
-    @propertyWrapper final class RuntimeProperty<Value>: ObjectStore.ObjectPropertyWrapper {
+    @propertyWrapper final class Transient<Value>: ObjectStore.ObjectPropertyWrapper {
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value {
             get { fatalError() }
@@ -33,7 +33,7 @@ public extension ObjectStore.Object {
         
         public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
                                            wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Value>,
-                                           storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, RuntimeProperty>) -> Value where Enclosing: ObjectStore.Object
+                                           storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Transient>) -> Value where Enclosing: ObjectStore.Object
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
