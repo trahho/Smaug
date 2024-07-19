@@ -20,6 +20,7 @@ public extension ObjectPersistence.Object {
 
         private var _value: Value?
         private var changed: Date?
+        private var logChanges: Bool
         weak var instance: ObjectPersistence.Object?
 
         private func value<U>(_: U.Type) -> U? where U: ExpressibleByNilLiteral {
@@ -30,8 +31,9 @@ public extension ObjectPersistence.Object {
             self._value as! U
         }
 
-        public init(wrappedValue: @autoclosure @escaping () -> Value) {
+        public init(wrappedValue: @autoclosure @escaping () -> Value, logChanges: Bool = false) {
             self._value = wrappedValue()
+            self.logChanges = logChanges
         }
 
         public var projectedValue: ObjectStore.ObjectPropertyWrapper {
@@ -56,6 +58,7 @@ public extension ObjectPersistence.Object {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
                 storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                if storage.logChanges { print ("Access to \(instance.typeName).\(wrappedKeyPath.debugDescription)")}
                 storage.showAccess()
                 return storage.value(Value.self)
             }
@@ -63,6 +66,7 @@ public extension ObjectPersistence.Object {
                 let storage = instance[keyPath: storageKeyPath]
                 storage.instance = instance
                 storage.configureObservation(instance: instance, keyPath: wrappedKeyPath)
+                if storage.logChanges { print ("Write to \(instance.typeName).\(wrappedKeyPath.debugDescription)")}
                 try! storage.withMutation {
                     storage._value = newValue
                     storage.changed = Date()
