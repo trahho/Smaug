@@ -6,15 +6,23 @@
 //
 
 import Foundation
+
 public extension ObjectStore {
     class ObjectsStorageAbstract<T>: ObjectsStorage where T: Object {
+        // MARK: Properties
+
         // MARK: - Key
-        
-        var instance: ObjectStore!
+
+      
+
+        var deletedTimestamp: Date?
+
+        // MARK: Computed Properties
 
         var value: Set<T> { fatalError() }
-        var deletedTimestamp: Date?
-        
+
+        // MARK: Overridden Functions
+
 //        func configureObservation<Enclosing>(instance: Enclosing, keyPath: ReferenceWritableKeyPath<Enclosing, Set<T>>) where Enclosing: ObjectStore {
 //            withMutation = { action in
 //                instance.objectWillChange.send()
@@ -25,13 +33,19 @@ public extension ObjectStore {
 //                instance._$observationRegistrar.access(instance, keyPath: keyPath)
 //            }
 //        }
-        
-        func getObject(id: T.ID) -> T? { fatalError() }
-        
+
+//        override func contains(id: UUID) -> Bool {
+//            getObject(id: id) != nil
+//        }
+
+        // MARK: Functions
+
+        func getObject(id _: T.ID) -> T? { fatalError() }
+
         func getObjects() -> Set<T> { fatalError() }
-        
-        func addObject(item: T) { fatalError() }
-        
-        func deleteObject(item: T) { fatalError() }
+
+        func addObject(item _: T) { fatalError() }
+
+        func deleteObject(item _: T) { fatalError() }
     }
 }

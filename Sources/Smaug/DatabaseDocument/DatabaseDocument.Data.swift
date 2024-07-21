@@ -10,7 +10,37 @@ import Foundation
 
 public extension DatabaseDocument {
     @propertyWrapper
-    final class Data<T>: DataStorage where T: ObjectStore {
+    final class Data<Store>: DataStorage where Store: ObjectStore {
+        // MARK: Properties
+
+        var container: ObjectStore.Container<Store>!
+        var commitOnChange: Bool
+        var publishChange: Bool
+        var cancellable: AnyCancellable!
+
+        var staticContent: Store!
+
+        // MARK: Computed Properties
+
+        public var content: Store {
+            get { container.content }
+            set { container.setContent(content: newValue) }
+        }
+
+        // MARK: - Wrapping
+
+        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
+        public var wrappedValue: Store {
+            get { fatalError() }
+            set { fatalError() }
+        }
+
+        public var projectedValue: Data<Store> {
+            return self
+        }
+
+        // MARK: Lifecycle
+
         // MARK: - Initialization
 
         public init(publishChange: Bool = true, commitOnChange: Bool = true) {
@@ -18,25 +48,14 @@ public extension DatabaseDocument {
             self.publishChange = publishChange
         }
 
-        // MARK: - Content
-
-        var container: ObjectStore.Container<T>!
-        var commitOnChange: Bool
-        var publishChange: Bool
-        var cancellable: AnyCancellable!
-
-        var staticContent: T!
-        public var content: T {
-            get { container.content }
-            set { container.setContent(content: newValue) }
-        }
+        // MARK: Overridden Functions
 
         override func setup(url: URL, name: String, document: DatabaseDocument) {
             self.document = document
-            staticContent = T()
+            staticContent = Store()
             staticContent.document = document
             let url = url.appending(component: name + ".data")
-            container = ObjectStore.Container(document: document, url: url, content: T(), commitOnChange: commitOnChange)
+            container = ObjectStore.Container(document: document, url: url, content: Store(), commitOnChange: commitOnChange)
 //            if publishChange {
 //                cancellable = container!.objectWillChange.sink { document.objectWillChange.send() }
 //            }
@@ -55,6 +74,20 @@ public extension DatabaseDocument {
         }
 
         // MARK: - Storage
+
+//        override func deleteObject<Result>(_ object: Result) where T: ObjectStore.Object {
+//            guard !document.inSetup else {                throw Failure.deletedWhileSetup            }
+//        }
+
+        override func deleteObject<T>(item: T) throws where T: ObjectStore.Object {
+            try withMutation {
+                try content.deleteObject(item: item)
+            }
+        }
+
+        override func removeReferences<T>(to item: T) where T: ObjectStore.Object {
+            content.removeReferences(to: item)
+        }
 
         override func getObject<Result>(type: Result.Type, id: Result.ID) throws -> Result? where Result: ObjectStore.Object {
             guard let result = try content.getObject(type: type, id: id) else {
@@ -85,17 +118,11 @@ public extension DatabaseDocument {
 //            print("Persistent added \(T.self)")
         }
 
-        // MARK: - Wrapping
-
-        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-        public var wrappedValue: T {
-            get { fatalError() }
-            set { fatalError() }
-        }
+        // MARK: Static Functions
 
         public static subscript<Enclosing: DatabaseDocument>(_enclosingInstance instance: Enclosing,
-                                                             wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, T>,
-                                                             storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Data>) -> T
+                                                             wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Store>,
+                                                             storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Data>) -> Store
         {
             get {
                 let storage = instance[keyPath: storageKeyPath]
@@ -104,10 +131,6 @@ public extension DatabaseDocument {
                 return storage.content
             }
             set {}
-        }
-
-        public var projectedValue: Data<T> {
-            return self
         }
     }
 }

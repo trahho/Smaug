@@ -89,7 +89,9 @@ public extension ObjectStore {
             if let added = item.added, added < instance.writingTimestamp {
                 deletedTimestamp = added
             }
-            storage.removeValue(forKey: item.id)
+            try! withMutation {
+                storage.removeValue(forKey: item.id)
+            }
         }
     }
 }

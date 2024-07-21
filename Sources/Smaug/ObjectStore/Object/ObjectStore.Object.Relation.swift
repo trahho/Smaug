@@ -10,26 +10,19 @@ import Foundation
 
 public extension ObjectStore.Object {
     @propertyWrapper final class Relation<Enclosing, Value>: ReferenceStorage where Value: ObjectStore.Object, Enclosing: ObjectStore.Object {
-        internal var objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>?
-        internal var objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>?
+        // MARK: Properties
+
+        var objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>?
+        var objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>?
 
         private var deleteReferences: Bool
 
-        
-        override func deleteRelations() {
-            guard deleteReferences, let value else { return }
-            value.delete()
-        }
-        
-        public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>,deleteReferences: Bool = false) {
-            self.objectKeyPath = objectKeyPath
-            self.deleteReferences = deleteReferences
-        }
+        private var cancellable: AnyCancellable?
 
-        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>,deleteReferences: Bool = false) {
-            self.objectsKeyPath = objectsKeyPath
-            self.deleteReferences = deleteReferences
-        }
+        private var _value: Value?
+        private weak var _instance: Enclosing?
+
+        // MARK: Computed Properties
 
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
         public var wrappedValue: Value? {
@@ -37,9 +30,6 @@ public extension ObjectStore.Object {
             set { fatalError() }
         }
 
-        private var cancellable: AnyCancellable?
-
-        private var _value: Value?
         var value: Value? {
             get {
                 if let _value { return _value }
@@ -55,7 +45,7 @@ public extension ObjectStore.Object {
                 return _value
             }
             set {
-                guard !instance.readOnly,  value != newValue else { return }
+                guard !instance.readOnly, value != newValue else { return }
                 if let objectKeyPath {
                     if let value { value[keyPath: objectKeyPath] = nil }
                     if let newValue { newValue[keyPath: objectKeyPath] = instance }
@@ -70,30 +60,52 @@ public extension ObjectStore.Object {
                 }
             }
         }
+
+        private var instance: Enclosing {
+            get { _instance! }
+            set {
+                guard newValue != _instance else { return }
+                _instance = newValue
+            }
+        }
+
+        // MARK: Lifecycle
+
+        public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>, deleteReferences: Bool = false) {
+            self.objectKeyPath = objectKeyPath
+            self.deleteReferences = deleteReferences
+        }
+
+        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>, deleteReferences: Bool = false) {
+            self.objectsKeyPath = objectsKeyPath
+            self.deleteReferences = deleteReferences
+        }
+
+        // MARK: Overridden Functions
         
+        override func removeReferences<T>(to item: T) where T: ObjectStore.Object {
+            guard let item = item as? Value, let value = _value, item == value  else { return }
+            try! withMutation {
+                _value = nil
+            }
+        }
+
+        override func deleteRelations() {
+            guard deleteReferences, let value, let document = instance.store?.document else { return }
+            document.delete(value)
+        }
+
         override func resetValue() {
             try! withMutation {
                 _value = nil
             }
         }
 
-        private weak var _instance: Enclosing?
-        private var instance: Enclosing {
-            get { _instance! }
-            set {
-                guard newValue != _instance else { return }
-                _instance = newValue
-//                cancellable = _instance!.objectWillChange.sink { [self] in
-//                    if instance.store?.document != nil {
-//                        _value = nil
-//                    }
-//                }
-            }
-        }
-
         override func adopt(document: DatabaseDocument) {
             if let _value { document.add(_value) }
         }
+
+        // MARK: Static Functions
 
         public static subscript(_enclosingInstance instance: Enclosing,
                                 wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Value?>,

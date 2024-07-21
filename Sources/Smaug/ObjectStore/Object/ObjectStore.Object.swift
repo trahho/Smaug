@@ -15,8 +15,12 @@ extension ObjectStore {
 //        var document: DatabaseDocument? { store?.document }
         public internal(set) var isStatic = false
 
-        public func toggleStatic() {
-            isStatic.toggle()
+        public func toggleStatic(to value: Bool? = nil) {
+            if let value {
+                isStatic = value
+            } else {
+                isStatic.toggle()
+            }
         }
 
         var added: Date?
@@ -62,10 +66,11 @@ extension ObjectStore {
         public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
             store![type, name]
         }
+    
 
-        public func delete() {
-            try! store!.deleteObject(item: self)
-            for (_, value) in mirror(for: ReferenceStorage.self) {
+         func wasDeleted()  {
+            for (label, value) in mirror(for: ReferenceStorage.self) {
+//                print (label)
                 value.deleteRelations()
             }
         }

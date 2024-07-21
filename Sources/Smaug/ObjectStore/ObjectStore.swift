@@ -9,6 +9,8 @@ import Foundation
 import Observation
 
 open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContainer, ObservationInstance, Reflectable {
+    // MARK: Nested Types
+
     // MARK: - Types
 
     public typealias PersistentValue = Codable & Equatable
@@ -18,32 +20,40 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
         case mergeFailed
     }
 
+    // MARK: Properties
+
     public internal(set) var document: DatabaseDocument!
-
-    // MARK: - Timing
-
-    public var readingTimestamp: Date { document?.readingTimestamp ?? Date.distantFuture }
-    public var writingTimestamp: Date { document?.writingTimestamp ?? Date.distantPast }
 
     // MARK: - Enclosing
 
     public var objectDidChange: ObjectDidChangePublisher = .init()
     public let observationRegistrar = Observation.ObservationRegistrar()
 
-    public func didChange(){
-        objectDidChange.send()
-    }
-    
+    // MARK: Computed Properties
+
+    // MARK: - Timing
+
+    public var readingTimestamp: Date { document?.readingTimestamp ?? Date.distantFuture }
+    public var writingTimestamp: Date { document?.writingTimestamp ?? Date.distantPast }
+
+    // MARK: Lifecycle
+
     // MARK: - Initialisation
 
     public required init() {}
+
+    // MARK: Functions
+
+    public func didChange() {
+        objectDidChange.send()
+    }
 
     // MARK: - Persistence
 
     public func restore() {
         let mirror = mirror(for: ObjectsStorage.self)
-        mirror.forEach {
-            $0.value.setStore(store: self)
+        for item in mirror {
+            item.value.setStore(store: self)
         }
     }
 
@@ -57,9 +67,45 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
         didChange()
     }
 
+    // MARK: - Access
+
+    public subscript<T>(_ type: T.Type, _ id: T.ID) -> T? where T: ObjectStore.Object {
+        document[type, id]
+    }
+
+    public subscript<T>(_ type: T.Type) -> Set<T> where T: ObjectStore.Object {
+        document[type]
+    }
+
+    public subscript<T, S>(_ type: T.Type, _ ids: S) -> Set<T> where T: ObjectStore.Object, S: Sequence, S.Element == T.ID {
+        document[type, ids]
+    }
+
+    public func add<T>(_ item: T) where T: ObjectStore.Object {
+        document.add(item)
+    }
+
+    public func create<T>(_: T.Type) -> T where T: ObjectStore.Object {
+        let object = T()
+        add(object)
+        return object
+    }
+
+    public func delete<T>(_ item: T) where T: ObjectStore.Object {
+        try! document.deleteObject(item: item)
+    }
+
+    public func callAsFunction<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
+        create(type)
+    }
+
+    public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
+        document[type, name]
+    }
+
     // MARK: - Storage
 
-    func storage<T>(type: T.Type) -> ObjectsStorageAbstract<T>? {
+    func storage<T>(type _: T.Type) -> ObjectsStorageAbstract<T>? {
         let storage = mirror(for: ObjectsStorageAbstract<T>.self).first?.value
         if let storage, storage.instance == nil {
             storage.instance = self
@@ -90,46 +136,19 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
     }
 
     func deleteObject<T>(item: T) throws where T: ObjectStore.Object {
-        guard let storage = storage(type: T.self) else { throw DatabaseDocument.Failure.typeNotFound }
+        guard let storage = mirror(for: ObjectsStorageAbstract<T>.self).first?.value else { throw DatabaseDocument.Failure.typeNotFound }
         guard storage.getObject(id: item.id) == item else { return }
         storage.deleteObject(item: item)
+        document.removeReferences(to: item)
+        item.wasDeleted()
         didChange()
     }
 
-    // MARK: - Access
-
-    public subscript<T>(_ type: T.Type, _ id: T.ID) -> T? where T: ObjectStore.Object {
-        document[type, id]
-    }
-
-    public subscript<T>(_ type: T.Type) -> Set<T> where T: ObjectStore.Object {
-        document[type]
-    }
-
-    public subscript<T, S>(_ type: T.Type, _ ids: S) -> Set<T> where T: ObjectStore.Object, S: Sequence, S.Element == T.ID {
-        document[type, ids]
-    }
-
-    public func add<T>(_ item: T) where T: ObjectStore.Object {
-        document.add(item)
-    }
-
-    public func create<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
-        let object = T()
-        add(object)
-        return object
-    }
-
-    public func delete<T>(_ item: T) where T: ObjectStore.Object {
-        try! deleteObject(item: item)
-    }
-
-    public func callAsFunction<T>(_ type: T.Type) -> T where T: ObjectStore.Object {
-        create(type)
-    }
-
-    public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
-        document[type, name]
+    func removeReferences<T>(to item: T) where T: ObjectStore.Object {
+        for (_, value) in mirror(for: ObjectsStorage.self) {
+            if value.instance == nil { value.instance = self }
+            value.removeReferences(to: item)
+        }
     }
 }
 

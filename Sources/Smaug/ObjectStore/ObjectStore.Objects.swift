@@ -9,16 +9,31 @@ import Foundation
 
 public extension ObjectStore {
     @propertyWrapper
-    final class Objects<T>: ObjectsStorageBase<T> where T: Object {
+    final class Objects<Value>: ObjectsStorageBase<Value> where Value: Object {
+        // MARK: Computed Properties
+
         @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-        public var wrappedValue: Set<T> {
+        public var wrappedValue: Set<Value> {
             get { fatalError() }
             set { fatalError() }
         }
-        
+
+        // MARK: Overridden Functions
+
+        override func removeReferences<T>(to item: T) where T: ObjectStore.Object {
+            for storedItem in value {
+                let wrappers = storedItem.mirror(for: ObjectStore.Object.ReferenceStorage.self)
+                for (label, value) in wrappers {
+                    value.removeReferences(to: item)
+                }
+            }
+        }
+
+        // MARK: Static Functions
+
         public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
-                                           wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Set<T>>,
-                                           storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Objects>) -> Set<T>
+                                           wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Set<Value>>,
+                                           storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Objects>) -> Set<Value>
             where Enclosing: ObjectStore
         {
             get {

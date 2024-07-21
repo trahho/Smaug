@@ -10,29 +10,26 @@ import Foundation
 
 public extension ObjectStore.Object {
     @propertyWrapper final class Relations<Enclosing, Value>: ReferenceStorage where Value: ObjectStore.Object, Enclosing: ObjectStore.Object {
+        // MARK: Properties
+
         var objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>?
         var objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>?
 
         private var deleteReferences: Bool
 
-        override func deleteRelations() {
-            guard deleteReferences else { return }
-            value.forEach { $0.delete() }
-        }
-
-        public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>, deleteReferences: Bool = false) {
-            self.objectKeyPath = objectKeyPath
-            self.deleteReferences = deleteReferences
-        }
-
-        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>, deleteReferences: Bool = false) {
-            self.objectsKeyPath = objectsKeyPath
-            self.deleteReferences = deleteReferences
-        }
-
         private var cancellable: AnyCancellable?
 
         private var _value: [Value]?
+        private weak var _instance: Enclosing?
+
+        // MARK: Computed Properties
+
+        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
+        public var wrappedValue: [Value] {
+            get { fatalError() }
+            set { fatalError() }
+        }
+
         var value: [Value] {
             get {
                 if let _value { return _value }
@@ -78,13 +75,6 @@ public extension ObjectStore.Object {
             }
         }
 
-        override func resetValue() {
-            try! withMutation {
-                _value = nil
-            }
-        }
-
-        private weak var _instance: Enclosing?
         private var instance: Enclosing {
             get { _instance! }
             set {
@@ -98,15 +88,43 @@ public extension ObjectStore.Object {
             }
         }
 
+        // MARK: Lifecycle
+
+        public init(_ objectKeyPath: ReferenceWritableKeyPath<Value, Enclosing?>, deleteReferences: Bool = false) {
+            self.objectKeyPath = objectKeyPath
+            self.deleteReferences = deleteReferences
+        }
+
+        public init(_ objectsKeyPath: ReferenceWritableKeyPath<Value, [Enclosing]>, deleteReferences: Bool = false) {
+            self.objectsKeyPath = objectsKeyPath
+            self.deleteReferences = deleteReferences
+        }
+
+        // MARK: Overridden Functions
+        
+        override func removeReferences<T>(to item: T) where T: ObjectStore.Object {
+            guard let item = item as? Value, let value = _value, value.contains(item) else { return }
+            try! withMutation {
+                _value = nil
+            }
+        }
+
+        override func deleteRelations() {
+            guard deleteReferences, let document = instance.store?.document else { return }
+            value.forEach { document.delete($0) }
+        }
+
+        override func resetValue() {
+            try! withMutation {
+                _value = nil
+            }
+        }
+
         override func adopt(document: DatabaseDocument) {
             if let _value { _value.forEach { document.add($0) }}
         }
 
-        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-        public var wrappedValue: [Value] {
-            get { fatalError() }
-            set { fatalError() }
-        }
+        // MARK: Static Functions
 
         public static subscript(_enclosingInstance instance: Enclosing,
                                 wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, [Value]>,

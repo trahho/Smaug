@@ -11,19 +11,37 @@ import Foundation
 public extension DatabaseDocument {
     @propertyWrapper
     final class Transient<T>: DataStorage where T: ObjectMemory {
+        // MARK: Properties
+
+        var content: T!
+        var publishChange: Bool
+        var cancellable: AnyCancellable!
+
+        // MARK: Computed Properties
+
+        // MARK: - Wrapping
+
+        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
+        public var wrappedValue: T {
+            get { fatalError() }
+            set { fatalError() }
+        }
+
+        public var projectedValue: Transient<T> {
+            return self
+        }
+
+        // MARK: Lifecycle
+
         // MARK: - Initialization
 
         public init(publishChange: Bool = false) {
             self.publishChange = publishChange
         }
 
-        // MARK: - Content
+        // MARK: Overridden Functions
 
-        var content: T!
-        var publishChange: Bool
-        var cancellable: AnyCancellable!
-
-        override func setup(url: URL, name: String, document: DatabaseDocument) {
+        override func setup(url _: URL, name _: String, document: DatabaseDocument) {
             self.document = document
             content = T()
             content.document = document
@@ -46,13 +64,7 @@ public extension DatabaseDocument {
             try content.addObject(item: item)
         }
 
-        // MARK: - Wrapping
-
-        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-        public var wrappedValue: T {
-            get { fatalError() }
-            set { fatalError() }
-        }
+        // MARK: Static Functions
 
         public static subscript<Enclosing: DatabaseDocument>(_enclosingInstance instance: Enclosing,
                                                              wrapped _: ReferenceWritableKeyPath<Enclosing, T>,
@@ -63,10 +75,6 @@ public extension DatabaseDocument {
                 return storage.content
             }
             set {}
-        }
-
-        public var projectedValue: Transient<T> {
-            return self
         }
     }
 }

@@ -10,11 +10,7 @@ import Foundation
 
 public extension ObjectStore.Object {
     @propertyWrapper final class Object<Value>: ReferenceStorage where Value: ObjectStore.Object {
-        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-        public var wrappedValue: Value? {
-            get { fatalError() }
-            set { fatalError() }
-        }
+        // MARK: Properties
 
         private var cancellable: AnyCancellable?
 
@@ -24,16 +20,15 @@ public extension ObjectStore.Object {
         private var resetRelation: (() -> Void)?
         private var deleteReference: Bool
 
-        public init(deleteReference: Bool = false) {
-            self.deleteReference = deleteReference
-        }
-        
-        override func deleteRelations() {
-            guard deleteReference, let value else { return }
-            value.delete()
-        }
-
         private weak var _instance: ObjectStore.Object?
+
+        // MARK: Computed Properties
+
+        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
+        public var wrappedValue: Value? {
+            get { fatalError() }
+            set { fatalError() }
+        }
 
         var value: Value? {
             get {
@@ -71,9 +66,32 @@ public extension ObjectStore.Object {
             }
         }
 
+        // MARK: Lifecycle
+
+        public init(deleteReference: Bool = false) {
+            self.deleteReference = deleteReference
+        }
+
+        // MARK: Overridden Functions
+
+        override func deleteRelations() {
+            guard deleteReference, let value, let document = instance.store?.document else { return }
+            document.delete(value)
+        }
+
+        override func removeReferences<T>(to item: T) where T: ObjectStore.Object {
+            guard let item = item as? Value, let id = _id, item.id == id else { return }
+            try! withMutation {
+                value = nil
+                resetRelation?()
+            }
+        }
+
         override func adopt(document: DatabaseDocument) {
             if let _value { document.add(_value) }
         }
+
+        // MARK: Static Functions
 
         public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
                                            wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, Value?>,
@@ -102,6 +120,8 @@ public extension ObjectStore.Object {
                 instance.store?.didChange()
             }
         }
+
+        // MARK: Functions
 
         func resetRelations<Enclosing>(keyPath: KeyPath<Enclosing, Value?>) where Enclosing: ObjectStore.Object {
             guard let value else { return }

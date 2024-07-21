@@ -10,11 +10,7 @@ import Foundation
 
 public extension ObjectStore.Object {
     @propertyWrapper final class Objects<Value>: ReferenceStorage where Value: ObjectStore.Object {
-        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-        public var wrappedValue: [Value] {
-            get { fatalError() }
-            set { fatalError() }
-        }
+        // MARK: Properties
 
         private var cancellable: AnyCancellable?
 
@@ -24,13 +20,14 @@ public extension ObjectStore.Object {
         private var resetRelation: (() -> Void)?
         private var deleteReferences: Bool
 
-        public init(deleteReferences: Bool = false) {
-            self.deleteReferences = deleteReferences
-        }
-        
-        override func deleteRelations() {
-            guard deleteReferences else { return }
-            value.forEach { $0.delete() }
+        private weak var _instance: ObjectStore.Object?
+
+        // MARK: Computed Properties
+
+        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
+        public var wrappedValue: [Value] {
+            get { fatalError() }
+            set { fatalError() }
         }
 
         var value: [Value] {
@@ -51,7 +48,6 @@ public extension ObjectStore.Object {
             }
         }
 
-        private weak var _instance: ObjectStore.Object?
         private var instance: ObjectStore.Object {
             get { _instance! }
             set {
@@ -60,9 +56,36 @@ public extension ObjectStore.Object {
             }
         }
 
+        // MARK: Lifecycle
+
+        public init(deleteReferences: Bool = false) {
+            self.deleteReferences = deleteReferences
+        }
+
+        // MARK: Overridden Functions
+
+        override func deleteRelations() {
+            guard deleteReferences, let document = instance.store?.document else { return }
+            value.forEach { document.delete($0) }
+        }
+
+        override func removeReferences<T>(to item: T) where T: ObjectStore.Object {
+            guard let item = item as? Value, var ids = _ids else { return }
+            ids.removeAll { $0 == item.id }
+            
+            guard ids != _ids else { return }
+            try! withMutation {
+                _ids = ids
+                _value = nil
+            }
+            resetRelation?()
+        }
+
         override func adopt(document: DatabaseDocument) {
             if let _value { _value.forEach { document.add($0) }}
         }
+
+        // MARK: Static Functions
 
         public static subscript<Enclosing>(_enclosingInstance instance: Enclosing,
                                            wrapped wrappedKeyPath: ReferenceWritableKeyPath<Enclosing, [Value]>,
@@ -92,8 +115,10 @@ public extension ObjectStore.Object {
             }
         }
 
+        // MARK: Functions
+
         func resetRelations<Enclosing>(keyPath: KeyPath<Enclosing, [Value]>) where Enclosing: ObjectStore.Object {
-            value.forEach { value in
+            for value in value {
                 value
                     .mirror(for: Relation<Value, Enclosing>.self)
                     .filter { $0.value.objectsKeyPath == keyPath }
@@ -140,4 +165,3 @@ extension ObjectStore.Object.Objects: PersistentProperty {
         var changed: Date
     }
 }
-
