@@ -23,7 +23,7 @@ public extension ObjectStore {
         override func removeReferences<T>(to item: T) where T: ObjectStore.Object {
             for storedItem in value {
                 let wrappers = storedItem.mirror(for: ObjectStore.Object.ReferenceStorage.self)
-                for (label, value) in wrappers {
+                for (_, value) in wrappers {
                     value.removeReferences(to: item)
                 }
             }
