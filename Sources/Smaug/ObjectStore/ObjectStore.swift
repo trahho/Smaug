@@ -143,6 +143,13 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
         item.wasDeleted()
         didChange()
     }
+    
+    func removeObject<T>(item: T) throws where T: ObjectStore.Object {
+        guard let storage = mirror(for: ObjectsStorageAbstract<T>.self).first?.value else { throw DatabaseDocument.Failure.typeNotFound }
+        guard storage.getObject(id: item.id) == item else { return }
+        storage.removeObject(item: item)
+        didChange()
+    }
 
     func removeReferences<T>(to item: T) where T: ObjectStore.Object {
         for (_, value) in mirror(for: ObjectsStorage.self) {

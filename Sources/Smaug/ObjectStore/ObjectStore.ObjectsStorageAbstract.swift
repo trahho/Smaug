@@ -47,5 +47,7 @@ public extension ObjectStore {
         func addObject(item _: T) { fatalError() }
 
         func deleteObject(item _: T) { fatalError() }
+        
+        func removeObject(item _: T) { fatalError() }
     }
 }

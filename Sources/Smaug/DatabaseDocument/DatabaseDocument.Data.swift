@@ -50,13 +50,6 @@ public extension DatabaseDocument {
 
         // MARK: Overridden Functions
 
-         public func addStaticObject<Result>(item: Result) throws where Result: ObjectStore.Object {
-            try withMutation {
-                try staticContent.addObject(item: item)
-                item.isStatic = true
-            }
-        }
-
         override func setup(url: URL, name: String, document: DatabaseDocument) {
             self.document = document
             staticContent = Store()
@@ -138,6 +131,22 @@ public extension DatabaseDocument {
                 return storage.content
             }
             set {}
+        }
+
+        // MARK: Functions
+
+        public func addStaticObject<Result>(item: Result) throws where Result: ObjectStore.Object {
+            try withMutation {
+                try staticContent.addObject(item: item)
+                item.isStatic = true
+            }
+        }
+
+        public func makeObjectStatic<Result>(item: Result) throws where Result: ObjectStore.Object {
+            guard let dynamicItem = try content.getObject(type: Result.self, id: item.id), dynamicItem == item else { return }
+            try content.removeObject(item: dynamicItem)
+            item.isStatic = true
+            try staticContent.addObject(item: item)
         }
     }
 }
