@@ -80,6 +80,9 @@ public extension DatabaseDocument {
 //        }
 
         override func deleteObject<T>(item: T) throws where T: ObjectStore.Object {
+            guard try content.getObject(type: T.self, id: item.id) != nil else {
+                return
+            }
             try withMutation {
                 try content.deleteObject(item: item)
             }
@@ -108,6 +111,7 @@ public extension DatabaseDocument {
         override func addObject<Result>(item: Result) throws where Result: ObjectStore.Object {
             guard !document.inSetup else {
                 try staticContent.addObject(item: item)
+                item.isLocked = true
                 item.isStatic = true
 //                print("Static added \(T.self)")
                 return
@@ -138,6 +142,7 @@ public extension DatabaseDocument {
         public func addStaticObject<Result>(item: Result) throws where Result: ObjectStore.Object {
             try withMutation {
                 try staticContent.addObject(item: item)
+                item.isLocked = true
                 item.isStatic = true
             }
         }
@@ -145,6 +150,7 @@ public extension DatabaseDocument {
         public func makeObjectStatic<Result>(item: Result) throws where Result: ObjectStore.Object {
             guard let dynamicItem = try content.getObject(type: Result.self, id: item.id), dynamicItem == item else { return }
             try content.removeObject(item: dynamicItem)
+            item.isLocked = true
             item.isStatic = true
             try staticContent.addObject(item: item)
         }

@@ -11,37 +11,50 @@ import Observation
 
 extension ObjectStore {
     open class Object: ObjectBase {
+        // MARK: Properties
+
         public internal(set) var store: ObjectStore?
 //        var document: DatabaseDocument? { store?.document }
         public internal(set) var isStatic = false
-
-        public func toggleStatic(to value: Bool? = nil) {
-            if let value {
-                isStatic = value
-            } else {
-                isStatic.toggle()
-            }
-        }
+        public var isLocked = false
 
         var added: Date?
 
-        var readOnly: Bool {
-            guard let document = store?.document else { return false }
-            return document.readOnly || (!document.inSetup && isStatic)
-        }
+        // MARK: Computed Properties
 
         // MARK: - Timing
 
         public var readingTimestamp: Date { store?.readingTimestamp ?? Date.distantFuture }
         public var writingTimestamp: Date { store?.writingTimestamp ?? Date.distantPast }
 
-        func adopt(document: DatabaseDocument) {
-            mirror(for: ReferenceStorage.self).map {
-                $0.value
-            }.forEach {
-                $0.adopt(document: document)
-            }
+        var readOnly: Bool {
+            guard let document = store?.document else { return false }
+            return document.readOnly || (!document.inSetup && isLocked)
         }
+
+        // MARK: Overridden Functions
+
+        override open func merge(other: Mergeable) throws {
+            guard let other = other as? Self, other.id == id else { return }
+
+            if let added, let otherAdded = other.added, otherAdded < added { self.added = other.added }
+
+            try super.merge(other: other)
+        }
+
+        override public func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: PersistentCodingKey.self)
+            try container.encode(added, forKey: PersistentCodingKey(key: "ADDED"))
+            try super.encode(to: encoder)
+        }
+
+        override public func decode(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: PersistentCodingKey.self)
+            try added = container.decode(Date.self, forKey: PersistentCodingKey(key: "ADDED"))
+            try super.decode(from: decoder)
+        }
+
+        // MARK: Functions
 
         public subscript<T>(_ type: T.Type, _ id: T.ID) -> T? where T: ObjectStore.Object {
             store![type, id]
@@ -66,33 +79,20 @@ extension ObjectStore {
         public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
             store![type, name]
         }
-    
 
-         func wasDeleted()  {
+        func adopt(document: DatabaseDocument) {
+            mirror(for: ReferenceStorage.self).map {
+                $0.value
+            }.forEach {
+                $0.adopt(document: document)
+            }
+        }
+
+        func wasDeleted() {
             for (label, value) in mirror(for: ReferenceStorage.self) {
 //                print (label)
                 value.deleteRelations()
             }
-        }
-
-        override public func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: PersistentCodingKey.self)
-            try container.encode(added, forKey: PersistentCodingKey(key: "ADDED"))
-            try super.encode(to: encoder)
-        }
-
-        override public func decode(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: PersistentCodingKey.self)
-            try added = container.decode(Date.self, forKey: PersistentCodingKey(key: "ADDED"))
-            try super.decode(from: decoder)
-        }
-
-        override open func merge(other: Mergeable) throws {
-            guard let other = other as? Self, other.id == id else { return }
-
-            if let added, let otherAdded = other.added, otherAdded < added { self.added = other.added }
-
-            try super.merge(other: other)
         }
     }
 }
