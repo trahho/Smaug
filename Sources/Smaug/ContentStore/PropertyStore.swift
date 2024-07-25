@@ -9,29 +9,32 @@ import Foundation
 import Observation
 
 open class PropertyStore: PersistentContent, ContentContainer, ObservationInstance, Reflectable {
+    // MARK: Nested Types
 
     // MARK: - Types
 
     public typealias PersistentValue = Codable & Equatable
 
-    public internal(set) var document: DatabaseDocument! {
-        didSet {
-            print("Document set for \(typeName)")
-        }
-    }
+    // MARK: Properties
 
     // MARK: - Enclosing
 
     public var objectDidChange: ObjectDidChangePublisher = .init()
     public let observationRegistrar = ObservationRegistrar()
 
-    public func didChange() {
-        objectDidChange.send()
-    }
-    
+    public internal(set) var document: DatabaseDocument!
+
+    // MARK: Lifecycle
+
     // MARK: - Initialisation
 
     public required init() {}
+
+    // MARK: Functions
+
+    public func didChange() {
+        objectDidChange.send()
+    }
 
     // MARK: - Access
 
@@ -53,7 +56,7 @@ open class PropertyStore: PersistentContent, ContentContainer, ObservationInstan
         return object
     }
 
-    public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
+    public subscript<T>(_ type: T.Type, _ name: String) -> T where T: CacheDatabaseDocument {
         document[type, name]
     }
 }
@@ -77,34 +80,3 @@ extension PropertyStore: Persistent {
             }
     }
 }
-
-// extension DatabaseDocument {
-//    @propertyWrapper
-//    final class Projected<Value> {
-//        var keyPath: ReferenceWritableKeyPath<PropertyStore, Value>
-//
-//        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-//        public var wrappedValue: Value {
-//            get { fatalError() }
-//            set { fatalError() }
-//        }
-//
-//        init(_ keyPath: ReferenceWritableKeyPath<PropertyStore, Value>) {
-//            self.keyPath = keyPath
-//        }
-//
-//        public static subscript<Enclosing: PropertyStore>(_enclosingInstance instance: Enclosing,
-//                                                         wrapped _: ReferenceWritableKeyPath<Enclosing, Value>,
-//                                                         storage storageKeyPath: ReferenceWritableKeyPath<Enclosing, Projected>) -> Value
-//        {
-//            get {
-//                let storage = instance[keyPath: storageKeyPath]
-//                return instance[keyPath: storage.keyPath]
-//            }
-//            set {
-//                let storage = instance[keyPath: storageKeyPath]
-//                instance[keyPath: storage.keyPath] = newValue
-//            }
-//        }
-//    }
-// }

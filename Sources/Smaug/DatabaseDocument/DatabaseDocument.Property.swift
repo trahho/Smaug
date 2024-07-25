@@ -13,15 +13,7 @@ public extension DatabaseDocument {
 
     @propertyWrapper
     final class Property<T>: PropertyStorage where T: PropertyStore {
-        // MARK: - Initialization
-
-        public init(wrappedValue: @autoclosure @escaping () -> T, publishChange: Bool = true, commitOnChange: Bool = true) {
-            content = wrappedValue
-            self.commitOnChange = commitOnChange
-            self.publishChange = publishChange
-        }
-
-        // MARK: - Content
+        // MARK: Properties
 
         var container: PersistentContainer<T>!
         var content: () -> T
@@ -29,32 +21,7 @@ public extension DatabaseDocument {
         var publishChange: Bool
         var cancellable: AnyCancellable!
 
-        override func setup(url: URL, name: String, document: DatabaseDocument) {
-            let content = content()
-            self.document = document
-            print ("Setting document for \(content.typeName)")
-            content.document = document
-            let url = url.appending(component: name + ".properties")
-            container = PropertyStore.Container(document: document, url: url, content: content, commitOnChange: commitOnChange)
-//            if publishChange {
-//                cancellable = container.objectWillChange.sink { 
-//                    document.objectWillChange.send()
-//                }
-//            }
-        }
-        
-        override func start() {
-            container.start()
-        }
-        
-        override func load() {
-            container.load()
-        }
-        
-        override func save() {
-            container.save()
-        }
-
+        // MARK: Computed Properties
 
         // MARK: - Wrapping
 
@@ -63,6 +30,41 @@ public extension DatabaseDocument {
             get { fatalError() }
             set { fatalError() }
         }
+
+        // MARK: Lifecycle
+
+        // MARK: - Initialization
+
+        public init(wrappedValue: @autoclosure @escaping () -> T, publishChange: Bool = true, commitOnChange: Bool = true) {
+            content = wrappedValue
+            self.commitOnChange = commitOnChange
+            self.publishChange = publishChange
+        }
+
+        // MARK: Overridden Functions
+
+        override func setup(url: URL, name: String, document: DatabaseDocument) {
+            let content = content()
+            self.document = document
+//            print("Setting document for \(content.typeName)")
+            content.document = document
+            let url = url.appending(component: name + ".properties")
+            container = PropertyStore.Container(document: document, url: url, content: content, commitOnChange: commitOnChange)
+        }
+
+        override func start() {
+            container.start()
+        }
+
+        override func load() {
+            container.load()
+        }
+
+        override func save() {
+            container.save()
+        }
+
+        // MARK: Static Functions
 
         public static subscript<Enclosing: DatabaseDocument>(_enclosingInstance instance: Enclosing,
                                                              wrapped _: ReferenceWritableKeyPath<Enclosing, T>,

@@ -41,6 +41,7 @@ open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInst
 
     public private(set) var containerDocument: DatabaseDocument?
     public let observationRegistrar = Observation.ObservationRegistrar()
+    public private(set) var url: URL
 
     private(set) var inSetup: Bool = false
 
@@ -104,6 +105,7 @@ open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInst
     // MARK: - Initialization
 
     public required init(url: URL, containerDocument: DatabaseDocument? = nil) {
+        self.url = url
         self.containerDocument = containerDocument
         let storages = mirror(for: Storage.self)
         for storage in storages {
@@ -173,7 +175,7 @@ open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInst
         return object
     }
 
-    public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
+    public subscript<T>(_ type: T.Type, _ name: String) -> T where T: CacheDatabaseDocument {
         guard let mirror = mirror(for: Cache<T>.self).first else {
             guard let document = containerDocument?[type, name] else { fatalError("Cache for \(T.self) not found") }
             return document

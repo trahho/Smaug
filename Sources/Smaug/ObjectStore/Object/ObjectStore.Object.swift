@@ -76,7 +76,7 @@ extension ObjectStore {
             store!.create(type)
         }
 
-        public subscript<T>(_ type: T.Type, _ name: String) -> T where T: DatabaseDocument {
+        public subscript<T>(_ type: T.Type, _ name: String) -> T where T: CacheDatabaseDocument {
             store![type, name]
         }
 
@@ -89,7 +89,7 @@ extension ObjectStore {
         }
 
         func wasDeleted() {
-            for (label, value) in mirror(for: ReferenceStorage.self) {
+            for (_, value) in mirror(for: ReferenceStorage.self) {
 //                print (label)
                 value.deleteRelations()
             }

@@ -9,27 +9,27 @@ import Combine
 import Foundation
 
 public extension DatabaseDocument {
+  
+
     @propertyWrapper
-    final class Cache<T>: Storage where T: DatabaseDocument {
+    final class Cache<T>: Storage where T: CacheDatabaseDocument {
+        // MARK: Nested Types
+
         // MARK: - Types
 
         struct CacheItem {
-            weak var document: T?
-            let cancellable: AnyCancellable?
+            // MARK: Properties
 
-            init(document: T, cancellable: AnyCancellable?) {
+            weak var document: T?
+
+            // MARK: Lifecycle
+
+            init(document: T) {
                 self.document = document
-                self.cancellable = cancellable
             }
         }
 
-        // MARK: - Initialization
-
-        public init(publishChange: Bool = false) {
-            self.publishChange = publishChange
-        }
-
-        // MARK: - Content
+        // MARK: Properties
 
         var parent: DatabaseDocument!
         var publishChange: Bool
@@ -37,29 +37,11 @@ public extension DatabaseDocument {
 
         var cancellable: AnyCancellable?
 
-        override func setup(url: URL, name: String, document parent: DatabaseDocument) {
-            self.url = url.appending(component: name)
-            self.parent = parent
-        }
-
         // MARK: - Storage
 
         private var cache: [String: CacheItem] = [:]
 
-        subscript(name: String) -> T {
-            if let document = cache[name]?.document {
-                return document
-            } else {
-                let url = url.appending(component: name)
-                let document = T(url: url, containerDocument: parent)
-                let cancellable: AnyCancellable? = nil
-//                if publishChange {
-//                    cancellable = document.objectWillChange.sink(receiveValue: { [self] in parent.objectWillChange.send() })
-//                }
-                cache[name] = CacheItem(document: document, cancellable: cancellable)
-                return document
-            }
-        }
+        // MARK: Computed Properties
 
         // MARK: - Wrapping
 
@@ -72,6 +54,35 @@ public extension DatabaseDocument {
         public var projectedValue: [String] {
             guard let contents = try? FileManager.default.contentsOfDirectory(atPath: url.path) else { return [] }
             return contents.map { URL(filePath: $0).lastPathComponent }
+        }
+
+        // MARK: Lifecycle
+
+        // MARK: - Initialization
+
+        public init(publishChange: Bool = false) {
+            self.publishChange = publishChange
+        }
+
+        // MARK: Overridden Functions
+
+        override func setup(url: URL, name: String, document parent: DatabaseDocument) {
+            self.url = url.appending(component: name)
+            self.parent = parent
+        }
+
+        // MARK: Functions
+
+        subscript(name: String) -> T {
+            if let document = cache[name]?.document {
+                return document
+            } else {
+                let url = url.appending(component: name)
+                let document = T(url: url, containerDocument: parent)
+
+                cache[name] = CacheItem(document: document)
+                return document
+            }
         }
     }
 }
