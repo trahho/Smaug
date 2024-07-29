@@ -13,30 +13,11 @@ public extension ObjectStore {
 
         // MARK: - Key
 
-      
-
         var deletedTimestamp: Date?
 
         // MARK: Computed Properties
 
         var value: Set<T> { fatalError() }
-
-        // MARK: Overridden Functions
-
-//        func configureObservation<Enclosing>(instance: Enclosing, keyPath: ReferenceWritableKeyPath<Enclosing, Set<T>>) where Enclosing: ObjectStore {
-//            withMutation = { action in
-//                instance.objectWillChange.send()
-//                try instance._$observationRegistrar.withMutation(of: instance, keyPath: keyPath, action)
-//                instance.objectDidChange.send()
-//            }
-//            showAccess = {
-//                instance._$observationRegistrar.access(instance, keyPath: keyPath)
-//            }
-//        }
-
-//        override func contains(id: UUID) -> Bool {
-//            getObject(id: id) != nil
-//        }
 
         // MARK: Functions
 
@@ -47,7 +28,7 @@ public extension ObjectStore {
         func addObject(item _: T) { fatalError() }
 
         func deleteObject(item _: T) { fatalError() }
-        
+
         func removeObject(item _: T) { fatalError() }
     }
 }

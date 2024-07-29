@@ -62,18 +62,14 @@ open class PropertyStore: PersistentContent, ContentContainer, ObservationInstan
 }
 
 extension PropertyStore: Persistent {
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: PersistentCodingKey.self)
-
+    func encode(into container: inout EncodingContainer) throws {
         try mirror(for: PersistentProperty.self)
             .forEach { (label: String, value: PersistentProperty) in
                 try value.encode(into: &container, key: PersistentCodingKey(key: label))
             }
     }
 
-    public func decode(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: PersistentCodingKey.self)
-
+    func decode(from container: DecodingContainer) throws {
         try mirror(for: PersistentProperty.self)
             .forEach { (label: String, value: PersistentProperty) in
                 try value.decode(from: container, key: PersistentCodingKey(key: label))

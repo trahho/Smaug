@@ -26,16 +26,21 @@ public extension PersistentContent where Self: Codable {
     }
 }
 
-
-
-public protocol Persistent: Codable {
+protocol Persistent: Codable {
     init()
-    func decode(from decoder: Decoder) throws
+    func encode(into container: inout EncodingContainer) throws
+    func decode(from container: DecodingContainer) throws
 }
 
 extension Persistent {
     public init(from decoder: Decoder) throws {
         self.init()
-        try decode(from: decoder)
+        let container = try decoder.container(keyedBy: PersistentCodingKey.self)
+        try decode(from: container)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: PersistentCodingKey.self)
+        try encode(into: &container)
     }
 }

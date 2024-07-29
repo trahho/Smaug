@@ -51,8 +51,7 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
     // MARK: - Persistence
 
     public func restore() {
-        let mirror = mirror(for: ObjectsStorage.self)
-        for item in mirror {
+        for item in mirror(for: ObjectsStorage.self) {
             item.value.setStore(store: self)
         }
     }
@@ -60,10 +59,11 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
     public func merge(other: Mergeable) throws {
         guard let other = other as? Self else { throw MergeError.wrongMatch }
 
-        for (own, other) in zip(mirror(for: ObjectsStorage.self), other.mirror(for: ObjectsStorage.self)) {
+        for (var own, other) in zip(mirror(for: MergeablePropertyWrapper.self), other.mirror(for: MergeablePropertyWrapper.self)) {
             try own.value.merge(other: other.value)
             own.value.setStore(store: self)
         }
+
         didChange()
     }
 
@@ -143,7 +143,7 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
         item.wasDeleted()
         didChange()
     }
-    
+
     func removeObject<T>(item: T) throws where T: ObjectStore.Object {
         guard let storage = mirror(for: ObjectsStorageAbstract<T>.self).first?.value else { throw DatabaseDocument.Failure.typeNotFound }
         guard storage.getObject(id: item.id) == item else { return }
@@ -159,22 +159,4 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
     }
 }
 
-extension ObjectStore: Persistent {
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: PersistentCodingKey.self)
 
-        try mirror(for: PersistentProperty.self)
-            .forEach { (label: String, value: PersistentProperty) in
-                try value.encode(into: &container, key: PersistentCodingKey(key: label))
-            }
-    }
-
-    public func decode(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: PersistentCodingKey.self)
-
-        try mirror(for: PersistentProperty.self)
-            .forEach { (label: String, value: PersistentProperty) in
-                try value.decode(from: container, key: PersistentCodingKey(key: label))
-            }
-    }
-}

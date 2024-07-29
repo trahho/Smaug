@@ -7,4 +7,10 @@
 
 import Foundation
 
-protocol MergeablePropertyWrapper: Mergeable {}
+protocol MergeablePropertyWrapper: AnyObject, Mergeable {
+    func setStore(store _: ObjectStore)
+}
+
+extension MergeablePropertyWrapper {
+    func setStore(store _: ObjectStore) {}
+}

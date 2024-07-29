@@ -42,16 +42,14 @@ extension ObjectStore {
             try super.merge(other: other)
         }
 
-        override public func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: PersistentCodingKey.self)
+        override func encode(into container: inout EncodingContainer) throws {
             try container.encode(added, forKey: PersistentCodingKey(key: "ADDED"))
-            try super.encode(to: encoder)
+            try super.encode(into: &container)
         }
 
-        override public func decode(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: PersistentCodingKey.self)
+        override func decode(from container: DecodingContainer) throws {
             try added = container.decode(Date.self, forKey: PersistentCodingKey(key: "ADDED"))
-            try super.decode(from: decoder)
+            try super.decode(from: container)
         }
 
         // MARK: Functions

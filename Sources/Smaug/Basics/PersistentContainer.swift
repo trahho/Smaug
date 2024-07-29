@@ -9,11 +9,20 @@ import Combine
 import Foundation
 
 public class PersistentContainer<Content: PersistentContent> /*: ObservableObject */ {
+    // MARK: Nested Types
+
     typealias ContentDelegate = () -> Void
+
+    // MARK: Properties
+
+    let url: URL
+    var contentChange: ContentDelegate?
+    var willCommit: (() -> Void)?
+    var commitOnChange = false
+    private(set) var hasChanges = false
 
     private let timestampStringLenght = 30
 
-    let url: URL
     private var isMerging = false
     private var currentFileTimestamp: Date = .distantPast
     private var currentDataTimestamp: Double = 0
@@ -22,23 +31,9 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     private var didChangeSubcriber: AnyCancellable?
     private var willChangeSubscriber: AnyCancellable?
 
-    var contentChange: ContentDelegate?
-    var willCommit: (() -> Void)?
-    var commitOnChange = false
-    private(set) var hasChanges = false
-
     private var _content: Content?
 
-    fileprivate func setContent(_ newValue: Content) {
-//        objectWillChange.send()
-        _content = newValue
-        if _content != nil {
-            if let contentChange {
-                contentChange()
-            }
-        }
-        registerChanges()
-    }
+    // MARK: Computed Properties
 
     var content: Content {
         get { _content! }
@@ -55,46 +50,25 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
         }
     }
 
-    fileprivate func registerChanges() {
-        guard let _content else { return }
-        didChangeSubcriber = _content.objectDidChange
-            .filter { !self.isMerging }
-            .debounce(for: .seconds(1.5), scheduler: RunLoop.main)
-            .sink { [self] in
-                guard !isMerging else { return }
-                if commitOnChange {
-                    hasChanges = true
-                    save()
-                    hasChanges = false
-                } else {
-                    hasChanges = true
-                }
-            }
+    // MARK: Lifecycle
 
-        if let content = _content as? (any ObservableObject), let publisher = (content.objectWillChange as any Publisher) as? (ObservableObjectPublisher) {
-            willChangeSubscriber = publisher
-                .sink { [self] in
-//                    self.objectWillChange.send()
-                    hasChanges = true
-                }
-        } else {
-            willChangeSubscriber?.cancel()
-            willChangeSubscriber = nil
+    init(url: URL, content: Content, commitOnChange: Bool = false, configureContent: ContentDelegate? = nil) {
+        if url.isiCloud {
+            url.deletingLastPathComponent().startDownloading()
         }
+        self.url = url
+        self.commitOnChange = commitOnChange
+        contentChange = configureContent
+        restore(content: content)
+        self.content = content
     }
 
-    func stamped(content: Content) -> Data? {
-        guard
-            let data = content.encode(),
-            let data = try? (data as NSData).compressed(using: .lzfse) as Data
-        else { return nil }
-        currentDataTimestamp = Date().timeIntervalSince1970
-        let string = String(currentDataTimestamp)
-        let stampString = string + String(repeating: "0", count: timestampStringLenght - string.count)
-        var stampedData = stampString.data(using: .ascii)
-        stampedData?.append(data)
-        return stampedData
+    deinit {
+        guard metadataQuery.isStarted else { return }
+        metadataQuery.stop()
     }
+
+    // MARK: Functions
 
     public func save() {
         let fileQueue = DispatchQueue(label: "de.kuehnerleben.smaug.file", qos: .background)
@@ -137,44 +111,6 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
         }
     }
 
-    fileprivate func updateContent(_ newContent: Content) {
-        if let newContent = newContent as? Mergeable, var content = content as? Mergeable {
-            do {
-                isMerging = true
-                try content.merge(other: newContent)
-                isMerging = false
-            } catch {}
-        } else {
-            setContent(newContent)
-        }
-    }
-
-    func restore(content: Content) {
-        if let restorable = content as? Restorable {
-            restorable.restore()
-        }
-    }
-
-    func unstamped(data: Data?) -> Content? {
-        guard var data else { return nil }
-
-        let stampData = data.subdata(in: 0 ..< timestampStringLenght)
-        guard
-            let stampString = String(data: stampData, encoding: .ascii),
-            let dataTimestamp = Double(stampString),
-            dataTimestamp > currentDataTimestamp
-        else { return nil }
-        data.removeSubrange(0 ..< timestampStringLenght)
-
-        guard
-            let data = try? (data as NSData).decompressed(using: .lzfse) as Data,
-            let content = Content.decode(persistentData: data)
-        else { return nil }
-
-        currentDataTimestamp = dataTimestamp
-        return content
-    }
-
     public func load() {
         guard !url.isVirtual else { return }
         guard
@@ -203,6 +139,101 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
 //        #if TRACKPERSISTENCE
         print("Updated \(currentFileTimestamp)")
 //        #endif
+    }
+
+    func stamped(content: Content) -> Data? {
+        guard
+            let data = content.encode()
+//                ,
+//            let data = try? (data as NSData).compressed(using: .lzfse) as Data
+        else { return nil }
+        currentDataTimestamp = Date().timeIntervalSince1970
+        let string = String(currentDataTimestamp)
+        let stampString = string + String(repeating: "0", count: timestampStringLenght - string.count)
+        var stampedData = stampString.data(using: .ascii)
+        stampedData?.append(data)
+        return stampedData
+    }
+
+    func restore(content: Content) {
+        if let restorable = content as? Restorable {
+            restorable.restore()
+        }
+    }
+
+    func unstamped(data: Data?) -> Content? {
+        guard var data else { return nil }
+
+        let stampData = data.subdata(in: 0 ..< timestampStringLenght)
+        guard
+            let stampString = String(data: stampData, encoding: .ascii),
+            let dataTimestamp = Double(stampString),
+            dataTimestamp > currentDataTimestamp
+        else { return nil }
+        data.removeSubrange(0 ..< timestampStringLenght)
+
+        guard
+//            let data = try? (data as NSData).decompressed(using: .lzfse) as Data,
+            let content = Content.decode(persistentData: data)
+        else { return nil }
+
+        currentDataTimestamp = dataTimestamp
+        return content
+    }
+
+    func start() {
+        setupMetadataQuery()
+    }
+
+    fileprivate func setContent(_ newValue: Content) {
+//        objectWillChange.send()
+        _content = newValue
+        if _content != nil {
+            if let contentChange {
+                contentChange()
+            }
+        }
+        registerChanges()
+    }
+
+    fileprivate func registerChanges() {
+        guard let _content else { return }
+        didChangeSubcriber = _content.objectDidChange
+            .filter { !self.isMerging }
+            .debounce(for: .seconds(1.5), scheduler: RunLoop.main)
+            .sink { [self] in
+                guard !isMerging else { return }
+                if commitOnChange {
+                    hasChanges = true
+                    save()
+                    hasChanges = false
+                } else {
+                    hasChanges = true
+                }
+            }
+
+        if let content = _content as? (any ObservableObject), let publisher = (content.objectWillChange as any Publisher) as? (ObservableObjectPublisher) {
+            willChangeSubscriber = publisher
+                .sink { [self] in
+//                    self.objectWillChange.send()
+                    hasChanges = true
+                }
+        } else {
+            willChangeSubscriber?.cancel()
+            willChangeSubscriber = nil
+        }
+    }
+
+    fileprivate func updateContent(_ newContent: Content) {
+        if let newContent = newContent as? Mergeable, var content = content as? Mergeable {
+            do {
+                isMerging = true
+                try content.merge(other: newContent)
+                isMerging = false
+            } catch {}
+        } else {
+            setContent(newContent)
+        }
     }
 
     fileprivate func setupMetadataQuery() {
@@ -241,25 +272,5 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
         metadataQuery.predicate = pathPredicate
         metadataQuery.start()
         metadataQuery.enableUpdates()
-    }
-
-    init(url: URL, content: Content, commitOnChange: Bool = false, configureContent: ContentDelegate? = nil) {
-        if url.isiCloud {
-            url.deletingLastPathComponent().startDownloading()
-        }
-        self.url = url
-        self.commitOnChange = commitOnChange
-        self.contentChange = configureContent
-        restore(content: content)
-        self.content = content
-    }
-
-    func start() {
-        setupMetadataQuery()
-    }
-
-    deinit {
-        guard metadataQuery.isStarted else { return }
-        metadataQuery.stop()
     }
 }

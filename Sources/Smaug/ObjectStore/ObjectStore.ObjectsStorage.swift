@@ -8,7 +8,7 @@
 import Foundation
 
 public extension ObjectStore {
-    class ObjectsStorage: ObservationPropertyWrapper, Mergeable {
+    class ObjectsStorage: ObservationPropertyWrapper, MergeablePropertyWrapper {
         // MARK: Properties
 
         public internal(set) var store: ObjectStore!

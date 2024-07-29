@@ -55,7 +55,7 @@ public extension PropertyStore {
 }
 
 extension PropertyStore.Property: MergeablePropertyWrapper {
-    public func merge(other: Mergeable) throws {
+      public func merge(other: Mergeable) throws {
         guard let other = other as? Self else { return }
         if let otherChanged = other.changed, otherChanged > changed ?? .distantPast {
             try withMutation {
