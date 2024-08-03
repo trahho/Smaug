@@ -128,10 +128,10 @@ open class ObjectStore: PersistentContent, Restorable, Mergeable, ContentContain
         guard storage.getObject(id: item.id) == nil else { return }
 
 //        objectWillChange.send()
-        storage.addObject(item: item)
         item.added = writingTimestamp
         item.store = self
         item.adopt(document: document)
+        storage.addObject(item: item)
         didChange()
     }
 
