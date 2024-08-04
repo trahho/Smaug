@@ -16,8 +16,14 @@ public class ObservationPropertyWrapper {
         action in try action()
     }
     var showAccess: AccessAction = {}
+    
+    private var isSetup = false
 
     func configureObservation<Enclosing, T>(instance: Enclosing, keyPath: ReferenceWritableKeyPath<Enclosing, T>) where Enclosing: ObservationInstance {
+        guard !isSetup else {
+            return
+        }
+        isSetup = true
         withMutation = { action in
             try instance.observationRegistrar.withMutation(of: instance, keyPath: keyPath, action)
         }
