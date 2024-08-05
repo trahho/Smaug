@@ -49,7 +49,7 @@ extension ObjectStore {
         }
 
         func encode(into container: inout EncodingContainer) throws {
-            try container.encode(id, forKey: PersistentCodingKey(key: "ID"))
+            try container.encode(id, forKey: PersistentCodingKey(key: "I"))
 
             try mirror(for: PersistentProperty.self)
                 .forEach { (label: String, value: PersistentProperty) in
@@ -58,7 +58,7 @@ extension ObjectStore {
         }
 
         func decode(from container: DecodingContainer) throws {
-            try id = container.decode(ID.self, forKey: PersistentCodingKey(key: "ID"))
+            try id = container.decode(ID.self, forKey: PersistentCodingKey(key: "I"))
 
             try mirror(for: PersistentProperty.self)
                 .forEach { (label: String, value: PersistentProperty) in

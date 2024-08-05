@@ -9,26 +9,8 @@ import Combine
 import Foundation
 
 public extension DatabaseDocument {
-  
-
     @propertyWrapper
     final class Cache<T>: Storage where T: CacheDatabaseDocument {
-        // MARK: Nested Types
-
-        // MARK: - Types
-
-        struct CacheItem {
-            // MARK: Properties
-
-            weak var document: T?
-
-            // MARK: Lifecycle
-
-            init(document: T) {
-                self.document = document
-            }
-        }
-
         // MARK: Properties
 
         var parent: DatabaseDocument!
@@ -39,7 +21,7 @@ public extension DatabaseDocument {
 
         // MARK: - Storage
 
-        private var cache: [String: CacheItem] = [:]
+        private var cache = NSCache<NSString, T>()
 
         // MARK: Computed Properties
 
@@ -74,13 +56,12 @@ public extension DatabaseDocument {
         // MARK: Functions
 
         subscript(name: String) -> T {
-            if let document = cache[name]?.document {
+            if let document = cache.object(forKey: NSString(string: name)) {
                 return document
             } else {
                 let url = url.appending(component: name)
                 let document = T(url: url, containerDocument: parent)
-
-                cache[name] = CacheItem(document: document)
+                cache.setObject(document, forKey: NSString(string: name))
                 return document
             }
         }

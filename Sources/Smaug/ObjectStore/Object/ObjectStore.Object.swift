@@ -43,12 +43,12 @@ extension ObjectStore {
         }
 
         override func encode(into container: inout EncodingContainer) throws {
-            try container.encode(added, forKey: PersistentCodingKey(key: "ADDED"))
+            try container.encode(added, forKey: PersistentCodingKey(key: "A"))
             try super.encode(into: &container)
         }
 
         override func decode(from container: DecodingContainer) throws {
-            try added = container.decode(Date.self, forKey: PersistentCodingKey(key: "ADDED"))
+            try added = container.decode(Date.self, forKey: PersistentCodingKey(key: "A"))
             try super.decode(from: container)
         }
 

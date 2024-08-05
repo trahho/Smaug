@@ -89,19 +89,19 @@ extension ObjectStore.Object.Property: MergeablePropertyWrapper {
 
 extension ObjectStore.Object.Property: PersistentProperty {
     struct Coded: Codable {
-        var value: Value?
-        var changed: Date
+        var v: Value?
+        var c: Date
     }
 
     func encode(into container: inout EncodingContainer, key: PersistentCodingKey) throws {
         guard let changed else { return }
-        try container.encodeIfPresent(Coded(value: _value, changed: changed), forKey: key)
+        try container.encodeIfPresent(Coded(v: _value, c: changed), forKey: key)
     }
 
     func decode(from container: DecodingContainer, key: PersistentCodingKey) throws {
         if let coded = try? container.decodeIfPresent(Coded.self, forKey: key) {
-            _value = coded.value
-            changed = coded.changed
+            _value = coded.v
+            changed = coded.c
         }
     }
 }
