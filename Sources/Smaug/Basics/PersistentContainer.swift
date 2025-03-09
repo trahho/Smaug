@@ -23,6 +23,7 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
 
     private let timestampStringLenght = 30
 
+    private var lock = NSLock()
     private var isMerging = false
     private var currentFileTimestamp: Date = .distantPast
     private var currentDataTimestamp: Double = 0
@@ -71,74 +72,78 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     // MARK: Functions
 
     public func save() {
-        let fileQueue = DispatchQueue(label: "de.kuehnerleben.smaug.file", qos: .background)
-        guard !url.isVirtual, hasChanges else { return }
-        fileQueue.async { [self] in
-//            #if TRACKPERSISTENCE
-            print("PersistentDataContainer<\(String(reflecting: Content.self))>: Save")
-//            #endif
+        lock.withLock {
+            let fileQueue = DispatchQueue(label: "de.kuehnerleben.smaug.file", qos: .background)
+            guard !url.isVirtual, hasChanges else { return }
+            fileQueue.async { [self] in
+                //            #if TRACKPERSISTENCE
+                print("PersistentDataContainer<\(String(reflecting: Content.self))>: Save")
+                //            #endif
 
-            willCommit?()
-            guard let data = stamped(content: content) else { return }
+                willCommit?()
+                guard let data = stamped(content: content) else { return }
 
-            metadataQuery.stop()
-            url.deletingLastPathComponent().ensureDirectory()
+                metadataQuery.stop()
+                url.deletingLastPathComponent().ensureDirectory()
 
-//            #if TRACKPERSISTENCE
-//                measureDuration("Write data") {
-//                    try! data.write(to: url, options: [.atomic])
-//                }
-//            #else
-            try! data.write(to: url, options: [.atomic])
-//            #endif
+                //            #if TRACKPERSISTENCE
+                //                measureDuration("Write data") {
+                //                    try! data.write(to: url, options: [.atomic])
+                //                }
+                //            #else
+                try! data.write(to: url, options: [.atomic])
+                //            #endif
 
-            currentFileTimestamp = try! FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as! Date
+                currentFileTimestamp = try! FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as! Date
 
-//            #if TRACKPERSISTENCE
-            print("Modified \(currentFileTimestamp)")
-//            #endif
+                //            #if TRACKPERSISTENCE
+                print("Modified \(currentFileTimestamp)")
+                //            #endif
 
-            hasChanges = false
-            DispatchQueue.main.sync {
-//                #if TRACKPERSISTENCE
-                print("Reactivating query")
-//                #endif
-                metadataQuery.start()
+                hasChanges = false
+                DispatchQueue.main.sync {
+                    //                #if TRACKPERSISTENCE
+                    print("Reactivating query")
+                    //                #endif
+                    metadataQuery.start()
+                }
+                //            #if TRACKPERSISTENCE
+                print("Done")
+                //            #endif
             }
-//            #if TRACKPERSISTENCE
-            print("Done")
-//            #endif
         }
     }
 
     public func load() {
-        guard !url.isVirtual else { return }
-        guard
-            let modificationDate = try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false))[.modificationDate] as? Date,
-            modificationDate > currentFileTimestamp
-        else {
-            if url.isiCloud { url.deletingLastPathComponent().startDownloading() }
-            return
+        lock.withLock {
+            guard !url.isVirtual else { return }
+            guard
+                let modificationDate = try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false))[.modificationDate] as? Date,
+                modificationDate > currentFileTimestamp
+            else {
+                if url.isiCloud { url.deletingLastPathComponent().startDownloading() }
+                return
+            }
+            guard
+                let newContent = unstamped(data: try? Data(contentsOf: url, options: [.uncached]))
+            //                ,
+            //            let newContent = Content.decode(persistentData: data)
+            else { return }
+
+            //        #if TRACKPERSISTENCE
+            print("PersistentDataContainer<\(String(reflecting: Content.self))>: Load \(url.absoluteString)")
+            //        #endif
+
+            restore(content: newContent)
+            updateContent(newContent)
+
+            currentFileTimestamp = modificationDate
+            hasChanges = false
+
+            //        #if TRACKPERSISTENCE
+            print("Updated \(currentFileTimestamp)")
+            //        #endif
         }
-        guard
-            let newContent = unstamped(data: try? Data(contentsOf: url, options: [.uncached]))
-//                ,
-//            let newContent = Content.decode(persistentData: data)
-        else { return }
-
-//        #if TRACKPERSISTENCE
-        print("PersistentDataContainer<\(String(reflecting: Content.self))>: Load \(url.absoluteString)")
-//        #endif
-
-        restore(content: newContent)
-        updateContent(newContent)
-
-        currentFileTimestamp = modificationDate
-        hasChanges = false
-
-//        #if TRACKPERSISTENCE
-        print("Updated \(currentFileTimestamp)")
-//        #endif
     }
 
     func stamped(content: Content) -> Data? {
@@ -243,15 +248,18 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
 
         querySubscriber = Publishers.MergeMany(publishers)
             .receive(on: DispatchQueue.main)
-            .sink { [self] notification in
-                guard let query = notification.object as? NSMetadataQuery, query === self.metadataQuery else { return }
-//                let items = query.results.compactMap { $0 as? NSMetadataItem }//.filter { $0.value(forAttribute: nsmetdata) as! Bool == false }
-                query.disableUpdates()
+            .filter {
+                if let query = $0.object as? NSMetadataQuery, query == self.metadataQuery {
+                    true
+                } else {
+                    false
+                }
+            }
+            .sink { [self] _ in
                 self.load()
-                query.enableUpdates()
             }
 
-        metadataQuery.notificationBatchingInterval = 0 // .1
+        metadataQuery.notificationBatchingInterval = 0.1 // .1
 
         if url.isiCloud {
             metadataQuery.searchScopes = [NSMetadataQueryUbiquitousDocumentsScope]

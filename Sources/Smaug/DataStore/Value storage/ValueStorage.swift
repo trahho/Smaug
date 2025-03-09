@@ -12,7 +12,7 @@
 //    case b(Bool)
 //    case c(String)
 //    case d(Date)
-////        case e([Role])
+////        case e([Perspective])
 //    case f([UUID])
 //    case g(UUID)
 //
@@ -22,7 +22,7 @@
 //        else if let value = value as? Bool { self = .b(value) }
 //        else if let value = value as? String { self = .c(value) }
 //        else if let value = value as? Date { self = .d(value) }
-////            else if let value = value as? Set<Role> { self = .e(value.asArray) }
+////            else if let value = value as? Set<Perspective> { self = .e(value.asArray) }
 //        else if let value = value as? Set<IdentifiableObject.ID> { self = .f(value.asArray) }
 //        else if let uuid = value as? UUID { self = .g(uuid) }
 //        else { return nil }

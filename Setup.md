@@ -25,14 +25,14 @@ PList
     <array>
         <dict>
             <key>CFBundleTypeName</key>
-            <string>$Name Language</string>
-            <key>CFBundleTypeRole</key>
+            <string>$Name $Extension</string>
+            <key>CFBundleTypePerspective</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
             <string>Default</string>
             <key>LSItemContentTypes</key>
             <array>
-                <string>de.kuehnerleben.$Name.language</string>
+                <string>de.kuehnerleben.$Name.$Extension</string>
             </array>
             <key>LSTypeIsPackage</key>
             <true/>
@@ -62,11 +62,11 @@ PList
                 <string>com.apple.package</string>
             </array>
             <key>UTTypeDescription</key>
-            <string>$Name Language</string>
+            <string>$Name $Extension</string>
             <key>UTTypeIcons</key>
             <dict/>
             <key>UTTypeIdentifier</key>
-            <string>de.kuehnerleben.$Name.language</string>
+            <string>de.kuehnerleben.$Name.$Extension</string>
             <key>UTTypeTagSpecification</key>
             <dict>
                 <key>public.filename-extension</key>
@@ -75,7 +75,7 @@ PList
                 </array>
                 <key>public.mime-type</key>
                 <array>
-                    <string>application/language</string>
+                    <string>application/$Extension</string>
                 </array>
             </dict>
         </dict>
