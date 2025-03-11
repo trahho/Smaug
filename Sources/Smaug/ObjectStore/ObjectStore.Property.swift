@@ -30,7 +30,7 @@ public extension ObjectStore {
         // MARK: Lifecycle
 
         public init(wrappedValue: @autoclosure @escaping () -> Value) {
-            print("init wrappedValue: \(String(describing: wrappedValue()))")
+//            print("init wrappedValue: \(String(describing: wrappedValue()))")
             _value = wrappedValue()
         }
 
