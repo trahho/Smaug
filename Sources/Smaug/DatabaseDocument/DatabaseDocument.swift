@@ -33,9 +33,7 @@ extension DatabaseDocument {
 open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInstance {
     // MARK: Static Computed Properties
 
-    private static var iCloudContainerUrl: URL { URL.iCloudDirectory.appendingPathComponent("Documents") }
 
-    private static var localContainerUrl: URL { URL.localDirectory }
 
     // MARK: Properties
 
@@ -123,7 +121,7 @@ open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInst
     }
 
     public convenience init(name: String, local: Bool, configuration: Configuration) {
-        let containerURL = local ? Self.localContainerUrl.appendingPathComponent(configuration.appName) : Self.iCloudContainerUrl
+        let containerURL = local ? URL.localContainerUrl.appendingPathComponent(configuration.appName) : URL.iCloudContainerUrl
         let url = containerURL.appendingPathComponent("\(name)\(configuration.documentExtension)")
         self.init(url: url)
     }

@@ -8,6 +8,42 @@
 import Combine
 import Foundation
 
+#if os(watchOS) || os(iOS)
+    extension PersistentContainer: CoordinatorPersistentContainer {
+        func receiveData(data: Data) {
+            print("Receive Data")
+
+            guard let data = try? (data as NSData).decompressed(using: .lzfse) as Data,
+                  let newContent = Content.decode(persistentData: data)
+            else { return }
+//            lock.withLock {
+//                print("Lock acquired")
+            restore(content: newContent)
+            update(with: newContent)
+            hasChanges = true
+//            }
+            save()
+        }
+
+        var identifier: String {
+            key
+        }
+
+        func showData() -> Data? {
+            guard
+                let data = content.encode(),
+                let data = try? (data as NSData).compressed(using: .lzfse) as Data
+            else { return nil }
+            return data
+        }
+
+        func sendData() {
+            print("Send Data")
+            WatchCoordinator.shared.registerContainer(key: key, container: self)
+            WatchCoordinator.shared.sendData(key: key)
+        }
+    }
+#endif
 public class PersistentContainer<Content: PersistentContent> /*: ObservableObject */ {
     // MARK: Nested Types
 
@@ -16,6 +52,7 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     // MARK: Properties
 
     let url: URL
+    let key: String
     var contentChange: ContentDelegate?
     var willCommit: (() -> Void)?
     var commitOnChange = false
@@ -27,8 +64,10 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     private var isMerging = false
     private var currentFileTimestamp: Date = .distantPast
     private var currentDataTimestamp: Double = 0
-    private let metadataQuery = NSMetadataQuery()
-    private var querySubscriber: AnyCancellable?
+    #if !os(watchOS)
+        private let metadataQuery = NSMetadataQuery()
+        private var querySubscriber: AnyCancellable?
+    #endif
     private var didChangeSubcriber: AnyCancellable?
     private var willChangeSubscriber: AnyCancellable?
 
@@ -48,6 +87,9 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
             } else {
                 hasChanges = true
             }
+            #if os(watchOS) || os(iOS)
+                sendData()
+            #endif
         }
     }
 
@@ -56,18 +98,27 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     init(url: URL, content: Content, commitOnChange: Bool = false, configureContent: ContentDelegate? = nil) {
         if url.isiCloud {
             url.deletingLastPathComponent().startDownloading()
+            key = String(url.path.dropFirst(URL.iCloudContainerUrl.path.count))
+        } else {
+            key = String(url.path.dropFirst(URL.localContainerUrl.path.count))
         }
+
         self.url = url
         self.commitOnChange = commitOnChange
         contentChange = configureContent
         restore(content: content)
-        self.content = content
+        setContent(content)
+        #if os(watchOS) || os(iOS)
+            WatchCoordinator.shared.registerContainer(key: key, container: self)
+        #endif
     }
 
-    deinit {
-        guard metadataQuery.isStarted else { return }
-        metadataQuery.stop()
-    }
+    #if !os(watchOS)
+        deinit {
+            guard metadataQuery.isStarted else { return }
+            metadataQuery.stop()
+        }
+    #endif
 
     // MARK: Functions
 
@@ -83,7 +134,9 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
                 willCommit?()
                 guard let data = stamped(content: content) else { return }
 
-                metadataQuery.stop()
+                #if !os(watchOS)
+                    metadataQuery.stop()
+                #endif
                 url.deletingLastPathComponent().ensureDirectory()
 
                 //            #if TRACKPERSISTENCE
@@ -101,12 +154,16 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
                 //            #endif
 
                 hasChanges = false
-                DispatchQueue.main.sync {
-                    //                #if TRACKPERSISTENCE
-                    print("Reactivating query")
-                    //                #endif
-                    metadataQuery.start()
-                }
+
+                #if !os(watchOS)
+
+                    DispatchQueue.main.sync {
+                        //                #if TRACKPERSISTENCE
+                        print("Reactivating query")
+                        //                #endif
+                        metadataQuery.start()
+                    }
+                #endif
                 //            #if TRACKPERSISTENCE
                 print("Done")
                 //            #endif
@@ -125,7 +182,8 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
                 return
             }
             guard
-                let newContent = unstamped(data: try? Data(contentsOf: url, options: [.uncached]))
+                let data = try? Data(contentsOf: url, options: [.uncached]),
+                let newContent = unstamped(data: data)
             //                ,
             //            let newContent = Content.decode(persistentData: data)
             else { return }
@@ -135,10 +193,14 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
             //        #endif
 
             restore(content: newContent)
-            updateContent(newContent)
+            update(with: newContent)
 
             currentFileTimestamp = modificationDate
             hasChanges = false
+
+            #if os(watchOS) || os(iOS)
+                sendData()
+            #endif
 
             //        #if TRACKPERSISTENCE
             print("Updated \(currentFileTimestamp)")
@@ -186,8 +248,20 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     }
 
     func start() {
-        setupMetadataQuery()
+        #if !os(watchOS)
+            setupMetadataQuery()
+        #endif
     }
+
+//    func contentDidChange() {
+//        if commitOnChange {
+//            hasChanges = true
+//            save()
+//            hasChanges = false
+//        } else {
+//            hasChanges = true
+//        }
+//    }
 
     fileprivate func setContent(_ newValue: Content) {
 //        objectWillChange.send()
@@ -214,6 +288,9 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
                 } else {
                     hasChanges = true
                 }
+                #if os(watchOS) || os(iOS)
+                    sendData()
+                #endif
             }
 
         if let content = _content as? (any ObservableObject), let publisher = (content.objectWillChange as any Publisher) as? (ObservableObjectPublisher) {
@@ -228,7 +305,7 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
         }
     }
 
-    fileprivate func updateContent(_ newContent: Content) {
+    fileprivate func update(with newContent: Content) {
         if let newContent = newContent as? Mergeable, var content = content as? Mergeable {
             do {
                 isMerging = true
@@ -240,44 +317,46 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
         }
     }
 
-    fileprivate func setupMetadataQuery() {
-        guard !url.isVirtual else { return }
+    #if !os(watchOS)
+        fileprivate func setupMetadataQuery() {
+            guard !url.isVirtual else { return }
 
-        let names: [NSNotification.Name] = [.NSMetadataQueryDidFinishGathering, .NSMetadataQueryDidUpdate]
-        let publishers = names.map { NotificationCenter.default.publisher(for: $0) }
+            let names: [NSNotification.Name] = [.NSMetadataQueryDidFinishGathering, .NSMetadataQueryDidUpdate]
+            let publishers = names.map { NotificationCenter.default.publisher(for: $0) }
 
-        querySubscriber = Publishers.MergeMany(publishers)
-            .receive(on: DispatchQueue.main)
-            .filter {
-                if let query = $0.object as? NSMetadataQuery, query == self.metadataQuery {
-                    true
-                } else {
-                    false
+            querySubscriber = Publishers.MergeMany(publishers)
+                .receive(on: DispatchQueue.main)
+                .filter {
+                    if let query = $0.object as? NSMetadataQuery, query == self.metadataQuery {
+                        true
+                    } else {
+                        false
+                    }
                 }
-            }
-            .sink { [self] _ in
-                self.load()
+                .sink { [self] _ in
+                    self.load()
+                }
+
+            metadataQuery.notificationBatchingInterval = 0.1 // .1
+
+            if url.isiCloud {
+                metadataQuery.searchScopes = [NSMetadataQueryUbiquitousDocumentsScope]
+            } else {
+                #if os(iOS)
+                    metadataQuery.searchScopes = [NSMetadataQueryAccessibleUbiquitousExternalDocumentsScope]
+                #endif
+                #if os(macOS)
+                    metadataQuery.searchScopes = [NSMetadataQueryLocalComputerScope]
+                #endif
             }
 
-        metadataQuery.notificationBatchingInterval = 0.1 // .1
-
-        if url.isiCloud {
-            metadataQuery.searchScopes = [NSMetadataQueryUbiquitousDocumentsScope]
-        } else {
-            #if os(iOS)
-                metadataQuery.searchScopes = [NSMetadataQueryAccessibleUbiquitousExternalDocumentsScope]
-            #endif
-            #if os(macOS)
-                metadataQuery.searchScopes = [NSMetadataQueryLocalComputerScope]
-            #endif
+            let pathPredicate = NSComparisonPredicate(leftExpression: NSExpression(forConstantValue: url.path(percentEncoded: false)),
+                                                      rightExpression: NSExpression(forKeyPath: NSMetadataItemPathKey),
+                                                      modifier: .direct,
+                                                      type: .beginsWith)
+            metadataQuery.predicate = pathPredicate
+            metadataQuery.start()
+            metadataQuery.enableUpdates()
         }
-
-        let pathPredicate = NSComparisonPredicate(leftExpression: NSExpression(forConstantValue: url.path(percentEncoded: false)),
-                                                  rightExpression: NSExpression(forKeyPath: NSMetadataItemPathKey),
-                                                  modifier: .direct,
-                                                  type: .beginsWith)
-        metadataQuery.predicate = pathPredicate
-        metadataQuery.start()
-        metadataQuery.enableUpdates()
-    }
+    #endif
 }

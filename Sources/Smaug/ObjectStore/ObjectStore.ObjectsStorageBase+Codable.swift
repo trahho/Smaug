@@ -14,7 +14,7 @@ extension ObjectStore.ObjectsStorageBase: PersistentProperty where T: Encodable 
     }
 
     func encode(into container: inout EncodingContainer, key: PersistentCodingKey) throws {
-        guard !storage.isEmpty else { return }
+        guard !(storage.isEmpty && deletedTimestamp == nil) else { return }
         let coded = Coded(deletedTimestamp: deletedTimestamp, values: Array(storage.values))
         try container.encodeIfPresent(coded, forKey: key)
     }

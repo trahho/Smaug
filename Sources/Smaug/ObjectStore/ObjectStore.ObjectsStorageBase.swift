@@ -71,7 +71,7 @@ public extension ObjectStore {
         override func removeObject(item: T) {
             guard storage[item.id] == item else { return }
             if let added = item.added, added < instance.writingTimestamp {
-                deletedTimestamp = added
+                deletedTimestamp = max(added, deletedTimestamp ?? .distantPast)
             }
             storage.removeValue(forKey: item.id)
         }

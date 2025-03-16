@@ -32,6 +32,10 @@ public extension URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
+    static var iCloudContainerUrl: URL { URL.iCloudDirectory.appendingPathComponent("Documents") }
+
+    static var localContainerUrl: URL { URL.localDirectory }
+
     func startDownloading() {
         guard isiCloud else { return }
         try? FileManager.default.startDownloadingUbiquitousItem(at: self)

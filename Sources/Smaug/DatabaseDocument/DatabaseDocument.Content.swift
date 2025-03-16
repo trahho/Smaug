@@ -9,9 +9,28 @@ import Combine
 import Foundation
 
 public extension DatabaseDocument {
-
     @propertyWrapper
     final class Content<T>: Storage where T: PersistentContent {
+        // MARK: Properties
+
+        var container: PersistentContainer<T>!
+        var content: () -> T
+        var commitOnChange: Bool
+        var publishChange: Bool
+        var cancellable: AnyCancellable!
+
+        // MARK: Computed Properties
+
+        // MARK: - Wrapping
+
+        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
+        public var wrappedValue: T {
+            get { fatalError() }
+            set { fatalError() }
+        }
+
+        // MARK: Lifecycle
+
         // MARK: - Initialization
 
         public init(wrappedValue: @autoclosure @escaping () -> T, publishChange: Bool = true, commitOnChange: Bool = true) {
@@ -20,13 +39,7 @@ public extension DatabaseDocument {
             self.publishChange = publishChange
         }
 
-        // MARK: - Content
-
-        var container: PersistentContainer<T>!
-        var content: () -> T
-        var commitOnChange: Bool
-        var publishChange: Bool
-        var cancellable: AnyCancellable!
+        // MARK: Overridden Functions
 
         override func setup(url: URL, name: String, document: DatabaseDocument) {
             let content = content()
@@ -41,7 +54,7 @@ public extension DatabaseDocument {
 //                }
 //            }
         }
-        
+
         override func start() {
             container.start()
         }
@@ -54,13 +67,7 @@ public extension DatabaseDocument {
             container.save()
         }
 
-        // MARK: - Wrapping
-
-        @available(*, unavailable, message: "This property wrapper can only be applied to classes")
-        public var wrappedValue: T {
-            get { fatalError() }
-            set { fatalError() }
-        }
+        // MARK: Static Functions
 
         public static subscript<Enclosing: DatabaseDocument>(_enclosingInstance instance: Enclosing,
                                                              wrapped _: ReferenceWritableKeyPath<Enclosing, T>,
