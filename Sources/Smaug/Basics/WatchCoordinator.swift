@@ -29,6 +29,10 @@
     }
 
     class WatchCoordinator: NSObject, WCSessionDelegate {
+        // MARK: Nested Types
+
+        typealias Message = [String: Data]
+
         // MARK: Static Properties
 
         static let shared = WatchCoordinator()
@@ -38,6 +42,7 @@
         let session: WCSession
 
         var containers: [String: CoordinatorPersistentContainerWeakReference] = [:]
+        var delayedMessage: Message = [:]
 
         // MARK: Computed Properties
 
@@ -80,8 +85,8 @@
                 session.activate()
             }
 
-            func sessionDidBecomeInactive(_ session: WCSession) {
-                session.activate()
+            func sessionDidBecomeInactive(_: WCSession) {
+//                session.activate()
             }
         #endif
 
@@ -90,14 +95,24 @@
                 print("session activation failed with error: \(error.localizedDescription)")
                 return
             }
-//            if activationState == .activated {
-//                var userInfo: [String: Data] = [:]
+            if activationState == .activated {
+//                var message: Message = [:]
 //                for identifier in containers.keys {
 //                    guard let container = container(for: identifier), let data = container.showData() else { continue }
-//                    userInfo[container.identifier] = data
+//                    message[container.identifier] = data
 //                }
-//                try! session.updateApplicationContext(userInfo)
-//            }
+                sendMessage([:])
+            }
+        }
+
+        func session(_: WCSession, didReceiveMessage message: [String: Any]) {
+            getMessage(message)
+        }
+
+        func session(_: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+            getMessage(message)
+            replyHandler(["Got": "it"])
+            sendMessage([:])
         }
 
         func session(_: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
@@ -121,7 +136,31 @@
         func sendData(key: String) {
             guard isActive, let container = container(for: key), let data = container.showData() else { return }
 
-            session.transferUserInfo([key: data])
+            sendMessage([key: data])
+        }
+
+        fileprivate func getMessage(_ message: [String: Any]) {
+            print("Get Data")
+            message.forEach { key, data in
+                guard let container = container(for: key), let data = data as? Data else { return }
+                container.receiveData(data: data)
+            }
+        }
+
+        fileprivate func sendMessage(_ message: Message) {
+            //                session.transferUserInfo(userInfo)
+            let message = message.merging(delayedMessage, uniquingKeysWith: { current, _ in current })
+            guard !message.isEmpty else {
+                print("No Data")
+                return
+            }
+            print("Send Data")
+            session.sendMessage(message)
+                { _ in print("Did reply") }
+                errorHandler: {
+                    error in print("error sending message: \(String(describing: error))")
+                    self.delayedMessage = message
+                }
         }
     }
 #endif

@@ -123,10 +123,10 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     // MARK: Functions
 
     public func save() {
-        lock.withLock {
-            let fileQueue = DispatchQueue(label: "de.kuehnerleben.smaug.file", qos: .background)
-            guard !url.isVirtual, hasChanges else { return }
-            fileQueue.async { [self] in
+        let fileQueue = DispatchQueue(label: "de.kuehnerleben.smaug.file", qos: .background)
+        guard !url.isVirtual, hasChanges else { return }
+        fileQueue.async { [self] in
+            lock.withLock {
                 //            #if TRACKPERSISTENCE
                 print("PersistentDataContainer<\(String(reflecting: Content.self))>: Save")
                 //            #endif
@@ -198,13 +198,12 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
             currentFileTimestamp = modificationDate
             hasChanges = false
 
-            #if os(watchOS) || os(iOS)
-                sendData()
-            #endif
-
             //        #if TRACKPERSISTENCE
             print("Updated \(currentFileTimestamp)")
             //        #endif
+            #if os(watchOS) || os(iOS)
+                sendData()
+            #endif
         }
     }
 
