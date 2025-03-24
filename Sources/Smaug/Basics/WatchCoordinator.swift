@@ -8,12 +8,6 @@
 
     import WatchConnectivity
 
-    protocol CoordinatorPersistentContainer: AnyObject {
-        func receiveData(data: Data)
-        func showData() -> Data?
-        var identifier: String { get }
-    }
-
     extension WatchCoordinator {
         class CoordinatorPersistentContainerWeakReference {
             // MARK: Properties
@@ -28,21 +22,44 @@
         }
     }
 
-    class WatchCoordinator: NSObject, WCSessionDelegate {
+    public extension WatchCoordinator {
+        @Observable class Log {
+            // MARK: Nested Types
+
+            public struct Entry {
+                public let date: Date
+                public let text: String
+            }
+
+            // MARK: Properties
+
+            public var entries: [Entry] = []
+
+            // MARK: Functions
+
+            func log(_ text: String) {
+                entries.append(.init(date: Date(), text: text))
+            }
+        }
+    }
+
+    public class WatchCoordinator: NSObject {
         // MARK: Nested Types
 
         typealias Message = [String: Data]
 
         // MARK: Static Properties
 
-        static let shared = WatchCoordinator()
+        public static let shared = WatchCoordinator()
 
         // MARK: Properties
 
-        let session: WCSession
+        public let log = Log()
 
+        let session: WCSession
         var containers: [String: CoordinatorPersistentContainerWeakReference] = [:]
         var delayedMessage: Message = [:]
+        var onDelay = false
 
         // MARK: Computed Properties
 
@@ -66,6 +83,7 @@
             if WCSession.isSupported() {
                 session.delegate = self
                 session.activate()
+                log.log("WCSession activated")
             }
         }
 
@@ -80,87 +98,72 @@
             return container
         }
 
-        #if os(iOS)
-            func sessionDidDeactivate(_ session: WCSession) {
-                session.activate()
-            }
+        func registerContainer(container: CoordinatorPersistentContainer) {
+            log.log("registerContainer \(container.identifier)")
+            containers[container.identifier] = CoordinatorPersistentContainerWeakReference(container: container)
+        }
 
-            func sessionDidBecomeInactive(_: WCSession) {
-//                session.activate()
+        func sendData(container: CoordinatorPersistentContainer) {
+            if self.container(for: container.identifier) !== container {
+                registerContainer(container: container)
             }
-        #endif
-
-        func session(_: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-            if let error {
-                print("session activation failed with error: \(error.localizedDescription)")
+            guard let data = container.showData() else {
+                log.log("sendData no data")
                 return
             }
-            if activationState == .activated {
-//                var message: Message = [:]
-//                for identifier in containers.keys {
-//                    guard let container = container(for: identifier), let data = container.showData() else { continue }
-//                    message[container.identifier] = data
-//                }
-                sendMessage([:])
+
+            guard !onDelay else {
+                log.log("sendData onDelay, delay 1")
+                delayedMessage[container.identifier] = data
+                return
             }
-        }
 
-        func session(_: WCSession, didReceiveMessage message: [String: Any]) {
-            getMessage(message)
-        }
-
-        func session(_: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
-            getMessage(message)
-            replyHandler(["Got": "it"])
-            sendMessage([:])
-        }
-
-        func session(_: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-            userInfo.forEach { key, data in
-                guard let container = container(for: key), let data = data as? Data else { return }
-                container.receiveData(data: data)
+            guard isActive else {
+                log.log("sendData isActive false, delay 1")
+                delayedMessage[container.identifier] = data
+                onDelay = true
+                return
             }
+            log.log("sendData 1")
+            sendMessage([container.identifier: data])
         }
 
-        func session(_: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-            applicationContext.forEach { key, data in
-                guard let container = container(for: key), let data = data as? Data else { return }
-                container.receiveData(data: data)
-            }
-        }
-
-        func registerContainer(key: String, container: CoordinatorPersistentContainer) {
-            containers[key] = CoordinatorPersistentContainerWeakReference(container: container)
-        }
-
-        func sendData(key: String) {
-            guard isActive, let container = container(for: key), let data = container.showData() else { return }
-
-            sendMessage([key: data])
-        }
-
-        fileprivate func getMessage(_ message: [String: Any]) {
+        func getMessage(_ message: [String: Any]) {
             print("Get Data")
             message.forEach { key, data in
                 guard let container = container(for: key), let data = data as? Data else { return }
+                log.log("getMessage \(key)")
                 container.receiveData(data: data)
             }
         }
 
-        fileprivate func sendMessage(_ message: Message) {
+        func sendMessage(_ message: Message) {
             //                session.transferUserInfo(userInfo)
-            let message = message.merging(delayedMessage, uniquingKeysWith: { current, _ in current })
+            let message = delayedMessage.merging(message, uniquingKeysWith: { _, new in new })
+            delayedMessage = [:]
             guard !message.isEmpty else {
-                print("No Data")
+                log.log("sendMessage is empty")
+                return
+            }
+            guard !onDelay else {
+                delayedMessage = message
+                log.log("sendMessage onDelay, delay \(delayedMessage.count)")
                 return
             }
             print("Send Data")
-            session.sendMessage(message)
-                { _ in print("Did reply") }
-                errorHandler: {
-                    error in print("error sending message: \(String(describing: error))")
+            log.log("sendMessage \(message.count)")
+            session.sendMessage(message) {
+                [self] reply in
+                log.log("sendMessage get reply \(reply.count)")
+                getMessage(reply)
+            } errorHandler: { [self]
+                error in print("error sending message: \(String(describing: error))")
+                    log.log("sendMessage error \(String(describing: error)) delayed \(message.count)")
+
                     self.delayedMessage = message
-                }
+                    self.onDelay = true
+//                    DispatchQueue.main.asyncAfter(deadline: DispatchTime(uptimeNanoseconds: 1_000_000_000)) { [self] in sendMessage(delayedMessage) }
+            }
         }
     }
 #endif

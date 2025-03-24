@@ -39,8 +39,7 @@ import Foundation
 
         func sendData() {
             print("Send Data")
-            WatchCoordinator.shared.registerContainer(key: key, container: self)
-            WatchCoordinator.shared.sendData(key: key)
+            WatchCoordinator.shared.sendData(container: self)
         }
     }
 #endif
@@ -109,7 +108,7 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
         restore(content: content)
         setContent(content)
         #if os(watchOS) || os(iOS)
-            WatchCoordinator.shared.registerContainer(key: key, container: self)
+            WatchCoordinator.shared.registerContainer(container: self)
         #endif
     }
 
@@ -280,6 +279,9 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
             .debounce(for: .seconds(1.5), scheduler: RunLoop.main)
             .sink { [self] in
                 guard !isMerging else { return }
+                #if os(watchOS) || os(iOS)
+                    sendData()
+                #endif
                 if commitOnChange {
                     hasChanges = true
                     save()
@@ -287,21 +289,18 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
                 } else {
                     hasChanges = true
                 }
-                #if os(watchOS) || os(iOS)
-                    sendData()
-                #endif
             }
 
-        if let content = _content as? (any ObservableObject), let publisher = (content.objectWillChange as any Publisher) as? (ObservableObjectPublisher) {
-            willChangeSubscriber = publisher
-                .sink { [self] in
-//                    self.objectWillChange.send()
-                    hasChanges = true
-                }
-        } else {
-            willChangeSubscriber?.cancel()
-            willChangeSubscriber = nil
-        }
+//        if let content = _content as? (any ObservableObject), let publisher = (content.objectWillChange as any Publisher) as? (ObservableObjectPublisher) {
+//            willChangeSubscriber = publisher
+//                .sink { [self] in
+        ////                    self.objectWillChange.send()
+//                    hasChanges = true
+//                }
+//        } else {
+//            willChangeSubscriber?.cancel()
+//            willChangeSubscriber = nil
+//        }
     }
 
     fileprivate func update(with newContent: Content) {
