@@ -5,15 +5,15 @@
 //  Created by Guido Kühn on 23.03.25.
 //
 
+#if os(watchOS) || os(iOS)
+    import WatchConnectivity
 
-import WatchConnectivity
-
-extension WatchCoordinator: WCSessionDelegate {
+    extension WatchCoordinator: WCSessionDelegate {
         public func sessionReachabilityDidChange(_ session: WCSession) {
             log.log("sessionReachabilityDidChange: \(session.isReachable)")
             if session.isReachable {
                 onDelay = false
-                sendMessage([:])
+                sendMessage(emptyMessage)
             } else {
                 onDelay = true
             }
@@ -41,7 +41,7 @@ extension WatchCoordinator: WCSessionDelegate {
 //                }
                 log.log("activationDidCompleteWith send \(delayedMessage.count)")
                 onDelay = false
-                sendMessage(delayedMessage)
+                sendMessage(emptyMessage)
             } else {
                 onDelay = true
             }
@@ -50,6 +50,9 @@ extension WatchCoordinator: WCSessionDelegate {
         public func session(_: WCSession, didReceiveMessage message: [String: Any]) {
             log.log("didReceiveMessage \(message.count)")
             getMessage(message)
+            if !delayedMessage.isEmpty {
+                sendMessage(delayedMessage)
+            }
         }
 
         public func session(_: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
@@ -79,3 +82,4 @@ extension WatchCoordinator: WCSessionDelegate {
             }
         #endif
     }
+#endif

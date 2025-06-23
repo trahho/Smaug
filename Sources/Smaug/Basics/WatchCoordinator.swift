@@ -8,41 +8,6 @@
 
     import WatchConnectivity
 
-    extension WatchCoordinator {
-        class CoordinatorPersistentContainerWeakReference {
-            // MARK: Properties
-
-            weak var container: CoordinatorPersistentContainer?
-
-            // MARK: Lifecycle
-
-            init(container: CoordinatorPersistentContainer) {
-                self.container = container
-            }
-        }
-    }
-
-    public extension WatchCoordinator {
-        @Observable class Log {
-            // MARK: Nested Types
-
-            public struct Entry {
-                public let date: Date
-                public let text: String
-            }
-
-            // MARK: Properties
-
-            public var entries: [Entry] = []
-
-            // MARK: Functions
-
-            func log(_ text: String) {
-                entries.append(.init(date: Date(), text: text))
-            }
-        }
-    }
-
     public class WatchCoordinator: NSObject {
         // MARK: Nested Types
 
@@ -56,6 +21,7 @@
 
         public let log = Log()
 
+        let emptyMessage: Message = ["": Data()]
         let session: WCSession
         var containers: [String: CoordinatorPersistentContainerWeakReference] = [:]
         var delayedMessage: Message = [:]
@@ -89,6 +55,11 @@
 
         // MARK: Functions
 
+        public func registerContainer(container: CoordinatorPersistentContainer) {
+            log.log("registerContainer \(container.identifier)")
+            containers[container.identifier] = CoordinatorPersistentContainerWeakReference(container: container)
+        }
+
         func container(for identifier: String) -> CoordinatorPersistentContainer? {
             guard let reference = containers[identifier] else { return nil }
             guard let container = reference.container else {
@@ -96,11 +67,6 @@
                 return nil
             }
             return container
-        }
-
-        func registerContainer(container: CoordinatorPersistentContainer) {
-            log.log("registerContainer \(container.identifier)")
-            containers[container.identifier] = CoordinatorPersistentContainerWeakReference(container: container)
         }
 
         func sendData(container: CoordinatorPersistentContainer) {
@@ -131,7 +97,7 @@
         func getMessage(_ message: [String: Any]) {
             print("Get Data")
             message.forEach { key, data in
-                guard let container = container(for: key), let data = data as? Data else { return }
+                guard !key.isEmpty, let container = container(for: key), let data = data as? Data else { return }
                 log.log("getMessage \(key)")
                 container.receiveData(data: data)
             }
@@ -146,7 +112,7 @@
                 return
             }
             guard !onDelay else {
-                delayedMessage = message
+                delayedMessage = message.filter { !$0.key.isEmpty }
                 log.log("sendMessage onDelay, delay \(delayedMessage.count)")
                 return
             }

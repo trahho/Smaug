@@ -10,7 +10,7 @@ import Foundation
 
 #if os(watchOS) || os(iOS)
     extension PersistentContainer: CoordinatorPersistentContainer {
-        func receiveData(data: Data) {
+        public func receiveData(data: Data) {
             print("Receive Data")
 
             guard let data = try? (data as NSData).decompressed(using: .lzfse) as Data,
@@ -25,11 +25,11 @@ import Foundation
             save()
         }
 
-        var identifier: String {
+        public var identifier: String {
             key
         }
 
-        func showData() -> Data? {
+        public func showData() -> Data? {
             guard
                 let data = content.encode(),
                 let data = try? (data as NSData).compressed(using: .lzfse) as Data
