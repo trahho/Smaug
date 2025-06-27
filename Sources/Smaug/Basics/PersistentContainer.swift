@@ -10,6 +10,34 @@ import Foundation
 
 #if os(watchOS) || os(iOS)
     extension PersistentContainer: CoordinatorPersistentContainer {
+        public func showFileURL() -> URL? {
+            url
+        }
+
+        public func receiveFileURL(_ url: URL) {
+            print("Receive File")
+            guard
+                var data = try? Data(contentsOf: url, options: [.uncached]) // ,
+//                let newContent = unstamped(data: data)
+            //                ,
+            //            let newContent = Content.decode(persistentData: data)
+            else { return }
+            data.removeSubrange(0 ..< timestampStringLength)
+
+            guard
+                let data = try? (data as NSData).decompressed(using: .lzfse) as Data,
+                let newContent = Content.decode(persistentData: data)
+            else { return }
+//            guard let data = try? Data(contentsOf: url),
+//                  let data = try? (data as NSData).decompressed(using: .lzfse) as Data,
+//                  let newContent = Content.decode(persistentData: data)
+//            else { return }
+            restore(content: newContent)
+            update(with: newContent)
+            hasChanges = true
+            save(isReceiving: true)
+        }
+
         public func receiveData(data: Data) {
             print("Receive Data")
 
@@ -39,7 +67,7 @@ import Foundation
 
         func sendData() {
             print("Send Data")
-            WatchCoordinator.shared.sendData(container: self)
+            WatchCoordinator.shared.sendFile(container: self)
         }
     }
 #endif
@@ -57,10 +85,11 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     var commitOnChange = false
     private(set) var hasChanges = false
 
-    private let timestampStringLenght = 30
+    private let timestampStringLength = 30
 
     private var lock = NSLock()
     private var isMerging = false
+    private var isReceiving = false
     private var currentFileTimestamp: Date = .distantPast
     private var currentDataTimestamp: Double = 0
     #if !os(watchOS)
@@ -86,9 +115,6 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
             } else {
                 hasChanges = true
             }
-            #if os(watchOS) || os(iOS)
-                sendData()
-            #endif
         }
     }
 
@@ -121,52 +147,56 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
 
     // MARK: Functions
 
-    public func save() {
+    public func save(isReceiving: Bool = false) {
         let fileQueue = DispatchQueue(label: "de.kuehnerleben.smaug.file", qos: .background)
         guard !url.isVirtual, hasChanges else { return }
         fileQueue.async { [self] in
-            lock.withLock {
-                //            #if TRACKPERSISTENCE
-                print("PersistentDataContainer<\(String(reflecting: Content.self))>: Save")
-                //            #endif
+//            lock.withLock { [weak self] in
+//            guard let self = self else { return }
+            //            #if TRACKPERSISTENCE
+            print("PersistentDataContainer<\(String(reflecting: Content.self))>: Save")
+            //            #endif
 
-                willCommit?()
-                guard let data = stamped(content: content) else { return }
+//            willCommit?()
+            guard let data = self.stamped(content: self.content) else { return }
 
-                #if !os(watchOS)
-                    metadataQuery.stop()
-                #endif
-                url.deletingLastPathComponent().ensureDirectory()
+            #if !os(watchOS)
+                metadataQuery.stop()
+            #endif
+            self.url.deletingLastPathComponent().ensureDirectory()
 
-                //            #if TRACKPERSISTENCE
-                //                measureDuration("Write data") {
-                //                    try! data.write(to: url, options: [.atomic])
-                //                }
-                //            #else
-                try! data.write(to: url, options: [.atomic])
-                //            #endif
+            //            #if TRACKPERSISTENCE
+            //                measureDuration("Write data") {
+            //                    try! data.write(to: url, options: [.atomic])
+            //                }
+            //            #else
+            try! data.write(to: url, options: [.atomic])
+            //            #endif
 
-                currentFileTimestamp = try! FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as! Date
+            currentFileTimestamp = try! FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as! Date
 
-                //            #if TRACKPERSISTENCE
-                print("Modified \(currentFileTimestamp)")
-                //            #endif
+            //            #if TRACKPERSISTENCE
+            print("Modified \(currentFileTimestamp)")
+            //            #endif
 
-                hasChanges = false
+            hasChanges = false
 
-                #if !os(watchOS)
+            #if !os(watchOS)
 
-                    DispatchQueue.main.sync {
-                        //                #if TRACKPERSISTENCE
-                        print("Reactivating query")
-                        //                #endif
-                        metadataQuery.start()
-                    }
-                #endif
-                //            #if TRACKPERSISTENCE
-                print("Done")
-                //            #endif
-            }
+//                DispatchQueue.main.sync {
+//                    //                #if TRACKPERSISTENCE
+//                    print("Reactivating query")
+//                    //                #endif
+                    metadataQuery.start()
+//                }
+            #endif
+            #if os(watchOS) || os(iOS)
+                if !isReceiving { sendData() }
+            #endif
+            //            #if TRACKPERSISTENCE
+            print("Done")
+            //            #endif
+//            }
         }
     }
 
@@ -213,7 +243,7 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
         else { return nil }
         currentDataTimestamp = Date().timeIntervalSince1970
         let string = String(currentDataTimestamp)
-        let stampString = string + String(repeating: "0", count: timestampStringLenght - string.count)
+        let stampString = string + String(repeating: "0", count: timestampStringLength - string.count)
         var stampedData = stampString.data(using: .ascii)
         stampedData?.append(data)
         return stampedData
@@ -228,13 +258,13 @@ public class PersistentContainer<Content: PersistentContent> /*: ObservableObjec
     func unstamped(data: Data?) -> Content? {
         guard var data else { return nil }
 
-        let stampData = data.subdata(in: 0 ..< timestampStringLenght)
+        let stampData = data.subdata(in: 0 ..< timestampStringLength)
         guard
             let stampString = String(data: stampData, encoding: .ascii),
             let dataTimestamp = Double(stampString),
             dataTimestamp > currentDataTimestamp
         else { return nil }
-        data.removeSubrange(0 ..< timestampStringLenght)
+        data.removeSubrange(0 ..< timestampStringLength)
 
         guard
             let data = try? (data as NSData).decompressed(using: .lzfse) as Data,

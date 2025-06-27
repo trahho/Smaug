@@ -13,5 +13,7 @@
         func receiveData(data: Data)
         func showData() -> Data?
         var identifier: String { get }
+        func showFileURL() -> URL?
+        func receiveFileURL(_ url: URL)
     }
 #endif
