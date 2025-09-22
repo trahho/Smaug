@@ -15,7 +15,7 @@
 
         // MARK: Static Properties
 
-        nonisolated(unsafe) public static let shared = WatchCoordinator()
+        public nonisolated(unsafe) static let shared = WatchCoordinator()
 
         // MARK: Properties
 
@@ -82,14 +82,19 @@
             let fileId = UUID().uuidString
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileId)
             try! FileManager.default.copyItem(at: url, to: tempURL)
-
+            session.outstandingFileTransfers
+                .filter { $0.file.metadata?["id"] as? String == container.identifier }
+                .forEach {
+                    $0.cancel()
+                    try? FileManager.default.removeItem(at: $0.file.fileURL)
+                }
             session.transferFile(tempURL, metadata: ["id": container.identifier])
         }
-        
-        func getFile(file: WCSessionFile){
-            guard let containerId = file.metadata?["id"] as? String else {return}
+
+        func getFile(file: WCSessionFile) {
+            guard let containerId = file.metadata?["id"] as? String else { return }
             log.log("getFile \(containerId)")
-            guard let container = self.container(for: containerId) else {return}
+            guard let container = container(for: containerId) else { return }
             container.receiveFileURL(file.fileURL)
         }
 
@@ -152,7 +157,7 @@
 //
 //                    self.delayedMessage = message
 //                    self.onDelay = true
-////                    DispatchQueue.main.asyncAfter(deadline: DispatchTime(uptimeNanoseconds: 1_000_000_000)) { [self] in sendMessage(delayedMessage) }
+        ////                    DispatchQueue.main.asyncAfter(deadline: DispatchTime(uptimeNanoseconds: 1_000_000_000)) { [self] in sendMessage(delayedMessage) }
 //            }
 //        }
     }
