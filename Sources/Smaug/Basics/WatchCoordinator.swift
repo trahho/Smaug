@@ -31,7 +31,7 @@
 
         #if os(iOS)
             var isActive: Bool {
-                WCSession.isSupported() && session.isWatchAppInstalled && session.isReachable
+                WCSession.isSupported() && session.isWatchAppInstalled  /*&& session.isReachable*/
             }
         #endif
 
@@ -70,10 +70,10 @@
         }
 
         func sendFile(container: CoordinatorPersistentContainer) {
-//            guard isActive else {
-//                log.log("sendFile isActive false")
-//                return
-//            }
+            guard isActive else {
+                log.log("sendFile isActive false")
+                return
+            }
             guard let url = container.showFileURL() else {
                 log.log("sendFile no url")
                 return

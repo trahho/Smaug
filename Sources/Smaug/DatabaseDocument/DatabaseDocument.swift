@@ -119,6 +119,12 @@ open class DatabaseDocument: Reflectable, /* ObservableObject,*/ ObservationInst
             storage.value.start()
         }
     }
+    
+    public func load() {
+        for storage in storages {
+            storage.load()
+        }
+    }
 
     public convenience init(name: String, local: Bool, configuration: Configuration) {
         let containerURL = local ? URL.localContainerUrl.appendingPathComponent(configuration.appName) : URL.iCloudContainerUrl

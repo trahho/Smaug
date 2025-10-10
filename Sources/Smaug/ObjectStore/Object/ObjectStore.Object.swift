@@ -18,7 +18,7 @@ extension ObjectStore {
         public internal(set) var isStatic = false
         public var isLocked = false
 
-        var added: Date?
+        public internal(set)  var added: Date!
 
         // MARK: Computed Properties
 
