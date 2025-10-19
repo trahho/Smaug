@@ -66,6 +66,7 @@ import Foundation
         }
 
         func sendData() {
+            guard !url.isVirtual else { return }
             print("Send Data")
             WatchCoordinator.shared.sendFile(container: self)
         }
